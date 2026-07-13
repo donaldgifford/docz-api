@@ -83,8 +83,9 @@ workstreams).
 
 ## Open Questions
 
-Answer these before starting (or before the phase that cites them). Format: `a`
-is the recommendation; pick a letter or write in an alternative.
+**RESOLVED 2026-07-13: all ten questions answered `a` (the recommendation).**
+The `a` options below are binding for execution — every "per OQ-Xa" reference in
+the phase tasks is authoritative. The alternatives are kept for the record.
 
 **OQ-1 — Meilisearch deployment mode default (Phase 3).** How should the chart
 provide Meilisearch?
