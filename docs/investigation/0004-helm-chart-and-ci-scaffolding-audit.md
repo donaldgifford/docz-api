@@ -13,7 +13,6 @@ created: 2026-07-13
 **Status:** Concluded **Author:** Donald Gifford **Date:** 2026-07-13
 
 <!--toc:start-->
-
 - [Question](#question)
 - [Hypothesis](#hypothesis)
 - [Context](#context)
