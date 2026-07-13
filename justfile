@@ -136,6 +136,28 @@ local-ps:
 local-logs:
     @{{ local_compose }} logs -f
 
+# ─── Helm ───────────────────────────────────────────────────────────
+
+# Lint the chart (ci-values supplies the required values with no defaults)
+[group('helm')]
+helm-lint:
+    @helm lint charts/docz-api -f charts/docz-api/ci/ci-values.yaml
+
+# Render the chart with the ci values (fast "does it template" check)
+[group('helm')]
+helm-template:
+    @helm template docz-api charts/docz-api -f charts/docz-api/ci/ci-values.yaml
+
+# Run the chart's helm-unittest suite (needs the helm-unittest plugin)
+[group('helm')]
+helm-unittest:
+    @helm unittest charts/docz-api
+
+# Regenerate the chart README from README.md.gotmpl + values.yaml
+[group('helm')]
+helm-docs:
+    @helm-docs --chart-search-root=charts
+
 # ─── Test ───────────────────────────────────────────────────────────
 
 # Run all tests with the race detector
@@ -189,6 +211,11 @@ lint-config:
 [group('lint')]
 lint-actions:
     @actionlint
+
+# Validate the Prometheus alert rules (contrib pack)
+[group('lint')]
+lint-alerts:
+    @promtool check rules contrib/prometheus/alerts.yaml
 
 # Lint the OpenAPI spec (vacuum ruleset) and verify its canonical formatting
 [group('lint')]

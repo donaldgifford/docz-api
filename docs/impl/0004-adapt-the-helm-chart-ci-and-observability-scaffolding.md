@@ -332,7 +332,7 @@ recipes later phases need for verification. No chart-template changes here.
 - [x] **1.4 Delete the orphan** `deploy/.env.dev.example` (byte-copy of
       `.env.local.example`, referenced by nothing). It is untracked — plain
       `rm`.
-- [ ] **1.5 justfile recipes.** Add a `# ─── Helm ───` section:
+- [x] **1.5 justfile recipes.** Add a `# ─── Helm ───` section:
 
   ```make
   [group('helm')]

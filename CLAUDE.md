@@ -712,6 +712,34 @@ served at **`GET /api/v1/repos/{owner}/{name}/index`** as
   serve → removal-at-HEAD → 404; store round-trip + migration up/down live in
   the store integration tests.
 
+## Helm chart + publish pipeline (INV-0004 / IMPL-0004)
+
+The `charts/docz-api/` Helm chart, the container/chart publish workflows
+(`ghcr.yml`/`ecr.yml` called from `release.yml`), the local monitoring stack
+(`deploy/compose.monitoring.yaml` + `deploy/dev/`), and the operator assets
+(`contrib/`) are being adapted from a repo-guardian/rfc-api copy-paste per
+`docs/impl/0004-*.md` (the phased plan) — **IN PROGRESS**. Conventions
+established as the build progresses:
+
+- **Helm tooling is in `mise.toml`**: `helm` (4.2.2), `helm-ct`, `helm-diff`,
+  `helm-docs`, `cosign`, `promtool`. `just` recipes drive it — `just helm-lint`,
+  `just helm-template`, `just helm-unittest` (needs the `helm-unittest` plugin),
+  `just helm-docs`; `just lint-alerts` runs `promtool check rules` on the
+  contrib pack. Chart lint/template **must** pass `-f charts/docz-api/ci/ci-values.yaml`
+  because the required values (secrets, app id, redirect base) have no defaults.
+- **`docker-bake.hcl` `_common` sets `args = {VERSION, COMMIT, DATE}`** →
+  Dockerfile ARGs → `-ldflags`. The bake vars are `VERSION`/`COMMIT_SHA`/
+  `BUILD_DATE`; the publish workflows export them as env before the bake step,
+  else images compile in `version=dev`.
+
+### Phase progress
+
+- **Phase 1 — Repo plumbing quick fixes: COMPLETE ✅** — schema tags fixed
+  (root `compose.yaml` / `.codecov.yml` / `sqlc.yaml` modelines added, wrong
+  `ct.yaml` tag removed); bake build args restored; publish workflows compute
+  build metadata; orphan `deploy/.env.dev.example` removed; helm + `lint-alerts`
+  just recipes added.
+
 ## Renovate
 
 - `go.mod` updates are PR'd by Renovate's Go module manager.
