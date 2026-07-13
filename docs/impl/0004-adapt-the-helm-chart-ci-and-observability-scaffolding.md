@@ -287,7 +287,7 @@ recipes later phases need for verification. No chart-template changes here.
 
 #### Tasks
 
-- [ ] **1.1 Schema tags.** Insert as line 1: in root `compose.yaml` →
+- [x] **1.1 Schema tags.** Insert as line 1: in root `compose.yaml` →
       `# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json`;
       in `.codecov.yml` →
       `# yaml-language-server: $schema=https://json.schemastore.org/codecov.json`;
