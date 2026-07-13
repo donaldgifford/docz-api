@@ -315,7 +315,7 @@ recipes later phases need for verification. No chart-template changes here.
   Verify: `docker buildx bake dev --print | jq '.target.dev.args'` shows all
   three keys.
 
-- [ ] **1.3 Feed the args in the publish workflows.** In `ghcr.yml` and
+- [x] **1.3 Feed the args in the publish workflows.** In `ghcr.yml` and
       `ecr.yml` `image` jobs, add before the bake step:
 
   ```yaml

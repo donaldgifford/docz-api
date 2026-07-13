@@ -127,7 +127,7 @@ jobs:
       - name: Locate archive SBOM
         id: sbom
         run: |
-          path="$(ls dist/docz-api_*_linux_amd64.tar.gz.spdx.json | head -n1)"
+          path="$(find dist -name 'docz-api_*_linux_amd64.tar.gz.spdx.json' | head -n1)"
           echo "path=${path}" >> "$GITHUB_OUTPUT"
 
       - name: Scan archive SBOM
