@@ -384,7 +384,7 @@ OQ-3, OQ-9.)
 
 #### Tasks
 
-- [ ] **2.1 Unify helpers under `docz-api.*`.** In `charts/docz-api/`, rename
+- [x] **2.1 Unify helpers under `docz-api.*`.** In `charts/docz-api/`, rename
       every `repo-guardian.` template define/include to `docz-api.`:
       `grep -rl 'repo-guardian\.' charts/docz-api/templates | xargs sed -i 's/repo-guardian\./docz-api./g'`.
       Verify: `grep -r 'repo-guardian\.' charts/docz-api/templates` prints

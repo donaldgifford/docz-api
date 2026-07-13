@@ -1,0 +1,13 @@
+{{- if .Values.policy.config }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docz-api.fullname" . }}-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "docz-api.labels" . | nindent 4 }}
+data:
+  guardian.hcl: |
+    {{- .Values.policy.config | nindent 4 }}
+{{- end }}

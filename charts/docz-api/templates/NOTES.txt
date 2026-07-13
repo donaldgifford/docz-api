@@ -1,0 +1,53 @@
+repo-guardian has been deployed!
+
+Webhook endpoint: POST /webhooks/github
+Health check:     GET  /healthz
+Readiness check:  GET  /readyz
+Metrics:          GET  :{{ .Values.config.metricsPort }}/metrics
+
+{{- if .Values.config.dryRun }}
+
+NOTE: Dry run mode is ENABLED. No PRs will be created.
+Set config.dryRun=false to enable live mode.
+{{- end }}
+
+{{- if .Values.tailscale.enabled }}
+
+Tailscale Funnel is enabled. Your webhook URL will be:
+  https://{{ .Values.tailscale.hostname }}.<your-tailnet>.ts.net/webhooks/github
+
+Check Tailscale status:
+  kubectl exec -it deploy/{{ include "docz-api.fullname" . }} -c tailscale -- tailscale status
+{{- else }}
+
+To expose the webhook endpoint, configure an Ingress or LoadBalancer
+to route traffic to the {{ include "docz-api.fullname" . }} service on port {{ .Values.service.httpPort }}.
+{{- end }}
+
+Configure your GitHub App's webhook URL to point to:
+  https://<your-domain>/webhooks/github
+
+{{- $hasLegacy := false }}
+{{- if hasKey .Values.templates "codeowners" }}{{- $hasLegacy = true }}{{- end }}
+{{- if hasKey .Values.templates "dependabot" }}{{- $hasLegacy = true }}{{- end }}
+{{- if hasKey .Values.templates "renovate" }}{{- $hasLegacy = true }}{{- end }}
+{{- if $hasLegacy }}
+
+WARNING: legacy template slots detected.
+
+Chart 0.4.0 removed templates.codeowners, templates.dependabot, and
+templates.renovate. Move existing values into templates.files keyed by
+filename:
+
+  templates:
+    files:
+      codeowners.tmpl: |
+        * @platform-team
+      dependabot.tmpl: |
+        version: 2
+        updates: [...]
+
+For out-of-band template management, set
+templates.existingConfigMap: <name> and the chart will mount that
+ConfigMap at TEMPLATE_DIR instead of rendering one.
+{{- end }}
