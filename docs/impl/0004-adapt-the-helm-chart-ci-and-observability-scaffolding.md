@@ -398,7 +398,7 @@ OQ-3, OQ-9.)
       templates/policy volumes + volumeMounts, and the `GUARDIAN_CONFIG`,
       `TEMPLATE_DIR`, `STRICT_TEMPLATES` env entries, and any
       `validateTemplatingVars`-style helper plus its `_helpers.tpl` definition.
-- [ ] **2.3 Rewrite `values.yaml`** to the target surface (add the modeline
+- [x] **2.3 Rewrite `values.yaml`** to the target surface (add the modeline
       `# yaml-language-server: $schema=values.schema.json` as line 1). Target
       top-level keys — keep the existing repo-guardian layout where it matches,
       delete everything not listed: `replicaCount`; `image`
