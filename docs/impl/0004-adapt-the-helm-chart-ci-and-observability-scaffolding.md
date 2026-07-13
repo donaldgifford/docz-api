@@ -389,7 +389,7 @@ OQ-3, OQ-9.)
       `grep -rl 'repo-guardian\.' charts/docz-api/templates | xargs sed -i 's/repo-guardian\./docz-api./g'`.
       Verify: `grep -r 'repo-guardian\.' charts/docz-api/templates` prints
       nothing.
-- [ ] **2.2 Delete repo-guardian-only templates + tests:**
+- [x] **2.2 Delete repo-guardian-only templates + tests:**
       `templates/configmap.yaml` (PR templates),
       `templates/policy-configmap.yaml` (guardian.hcl),
       `tests/configmap_test.yaml`, `tests/policy_test.yaml`,

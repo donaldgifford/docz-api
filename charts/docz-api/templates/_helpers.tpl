@@ -155,24 +155,3 @@ Secret key holding QUEUE_VALKEY_DSN.
 QUEUE_VALKEY_DSN
 {{- end -}}
 {{- end -}}
-
-{{/*
-Validates that none of the keys in .Values.templating.vars collide with
-chart-managed env vars. Calls `fail` with a clear list of offenders so
-the helm-render step exits with a useful error instead of silently
-shadowing the chart's own env entries.
-
-Renders empty on success; failure aborts the entire template render.
-*/}}
-{{- define "docz-api.validateTemplatingVars" -}}
-{{- $reserved := splitList " " (trim (include "docz-api.reservedEnvVars" .)) -}}
-{{- $offenders := list -}}
-{{- range $k, $_ := .Values.templating.vars -}}
-{{- if has $k $reserved -}}
-{{- $offenders = append $offenders $k -}}
-{{- end -}}
-{{- end -}}
-{{- if $offenders -}}
-{{- fail (printf "templating.vars keys collide with chart-managed env vars: %s" (join ", " $offenders)) -}}
-{{- end -}}
-{{- end }}
