@@ -301,7 +301,7 @@ recipes later phases need for verification. No chart-template changes here.
       `yamllint compose.yaml .codecov.yml sqlc.yaml ct.yaml` passes and
       `grep -L "yaml-language-server" compose.yaml .codecov.yml sqlc.yaml`
       prints nothing.
-- [ ] **1.2 Restore bake build args.** In `docker-bake.hcl`, add to
+- [x] **1.2 Restore bake build args.** In `docker-bake.hcl`, add to
       `target "_common"`:
 
   ```hcl

@@ -43,6 +43,15 @@ function "tags" {
 target "_common" {
   dockerfile = "Dockerfile"
   context    = "."
+  // Build args feed the Dockerfile's VERSION/COMMIT/DATE ARGs, which the
+  // build injects via -ldflags into main.version/commit/date. The bake
+  // variables (VERSION/COMMIT_SHA/BUILD_DATE) are set by the publish
+  // workflows; without this block every image compiled in version=dev.
+  args = {
+    VERSION = "${VERSION}"
+    COMMIT  = "${COMMIT_SHA}"
+    DATE    = "${BUILD_DATE}"
+  }
   labels = {
     "org.opencontainers.image.source"      = "https://github.com/donaldgifford/docz-api"
     "org.opencontainers.image.revision"    = "${COMMIT_SHA}"
