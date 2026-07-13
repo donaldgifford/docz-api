@@ -329,7 +329,7 @@ recipes later phases need for verification. No chart-template changes here.
   (bake reads variables from same-named env vars). Verify: `just lint-actions`
   passes.
 
-- [ ] **1.4 Delete the orphan** `deploy/.env.dev.example` (byte-copy of
+- [x] **1.4 Delete the orphan** `deploy/.env.dev.example` (byte-copy of
       `.env.local.example`, referenced by nothing). It is untracked — plain
       `rm`.
 - [ ] **1.5 justfile recipes.** Add a `# ─── Helm ───` section:
