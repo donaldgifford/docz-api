@@ -772,6 +772,35 @@ established as the build progresses:
     `prometheusrule.yaml` `repo-guardian` alert text + `README.md.gotmpl` /
     `just helm-docs` regen (Phase 4.4/4.5). So `just helm-unittest` and
     `just helm-docs` are intentionally NOT green mid-Phase-2/3.
+- **Phase 3 — Backing services wired: COMPLETE ✅** — the three deployed deps
+  (Postgres, Valkey, Meilisearch) are now reachable by docz-api and render
+  across every backend mode. Conventions:
+  - **Store/queue DSN keys are the app's env names**: baked Postgres secret
+    emits `DATABASE_URL` (db + user `doczapi`, `postgres://…/doczapi?sslmode=
+    disable`); baked Valkey secret emits `REDIS_URL` (`redis://…/0`). The
+    `docz-api.storeSecretName/Key` + `queueSecretName/Key` helpers resolve
+    baked (chart secret) / cnpg (`<name>-app`, key `uri`) / external.
+  - **External-mode refs live under `store.external.*` / `queue.external.*`**
+    (`existingSecret` + `secretKey`, defaulting to `DATABASE_URL`/`REDIS_URL`),
+    siblings of `store.postgres` / `queue.valkey` — the `mode` field stays under
+    `store.postgres` / `queue.valkey`. Same shape for `search.meili.external.*`.
+  - **Meilisearch is a first-class baked dep** (`search-meili.yaml` +
+    `search-meili-secret.yaml`): StatefulSet `getmeili/meilisearch:v1.12` on a
+    headless `<fullname>-meilisearch:7700` Service, `/health` probes,
+    `/meili_data` PVC. Its master key is **operator-supplied**
+    (`search.meili.masterKey`, required in baked mode) — NOT auto-generated like
+    the pg/valkey passwords — because Meilisearch (`MEILI_MASTER_KEY`) and
+    docz-api (`MEILI_API_KEY`) must share the exact value; one secret key
+    `MEILI_API_KEY` feeds both. `docz-api.meiliHost/searchSecretName/
+    searchSecretKey` mirror the store/queue helpers.
+  - **The `search.meili.image` field** was added (not in the plan's values
+    block) for parity with `store.postgres.baked.image` / `queue.valkey.baked
+    .image` and Renovate.
+  - **Mode matrix renders clean**: default (all baked), all-external, and
+    `store.postgres.mode=cnpg` all `helm template` with exit 0. `ci-values.yaml`
+    gained `search.meili.masterKey: ci-dummy`. The `repoguardian`/`STORE_DSN`/
+    `QUEUE_VALKEY_DSN` grep is clean in `templates/`; residual hits live only in
+    the generated `README.md` (Phase 4.5) and `tests/` (Phase 4.3).
 
 ## Renovate
 

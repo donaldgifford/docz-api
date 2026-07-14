@@ -533,7 +533,7 @@ missing third dependency. (INV-0004 Obs. 2b, 2c, 2h; OQ-1, OQ-2, OQ-6.)
       external mode (helper mirroring the store/queue pattern); `MEILI_API_KEY`
       from the mode-appropriate secret. Add `search.meili.masterKey: "ci-dummy"`
       to `ci/ci-values.yaml`.
-- [ ] **3.5 Mode-matrix render check** (all must render cleanly):
+- [x] **3.5 Mode-matrix render check** (all must render cleanly):
 
   ```sh
   just helm-template
