@@ -506,7 +506,7 @@ missing third dependency. (INV-0004 Obs. 2b, 2c, 2h; OQ-1, OQ-2, OQ-6.)
       keys): in `queue-valkey-secret.yaml` the emitted key `QUEUE_VALKEY_DSN` →
       `REDIS_URL`; external mode `queue.external.existingSecret` +
       `queue.external.secretKey` (default `REDIS_URL`).
-- [ ] **3.3 Meilisearch templates** (per OQ-1a — mirror the baked pattern): new
+- [x] **3.3 Meilisearch templates** (per OQ-1a — mirror the baked pattern): new
       `templates/search-meili.yaml` — StatefulSet (image
       `getmeili/meilisearch:v1.12`, env `MEILI_MASTER_KEY` from the meili
       secret, `MEILI_ENV: production`, `MEILI_NO_ANALYTICS: "true"`, volume

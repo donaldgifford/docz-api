@@ -267,12 +267,30 @@ queue:
     # -- Key inside existingSecret holding the DSN. Default: REDIS_URL.
     secretKey: REDIS_URL
 
-# -- Full-text search (Meilisearch). Filled out in Phase 3; the chart
-# runs a baked single-pod Meilisearch by default.
+# -- Full-text search (Meilisearch). The chart runs a baked single-pod
+# Meilisearch by default; point at an external instance with mode=external.
 search:
   meili:
     # -- Source of Meilisearch. One of "baked" or "external".
     mode: baked
+    # -- Meilisearch master key. Required in baked mode; shared by the
+    # baked Meilisearch (MEILI_MASTER_KEY) and docz-api (MEILI_API_KEY).
+    masterKey: ""
+    # -- Pinned baked image. Bump intentionally.
+    image: getmeili/meilisearch:v1.12
+    # -- Persistent volume size (baked mode).
+    storage: 5Gi
+    # -- StorageClass name (baked mode). Empty → cluster default.
+    storageClassName: ""
+    # -- External Meilisearch base URL, http(s)://host:port. Required
+    # when mode=external.
+    host: ""
+    # -- External Meilisearch secret. Used only when mode=external.
+    external:
+      # -- Secret holding the API key. Required when mode=external.
+      existingSecret: ""
+      # -- Key inside existingSecret holding the API key.
+      secretKey: MEILI_API_KEY
 
 # -- Tailscale Funnel sidecar. Off by default; the chart does not
 # require tailscale — homelab infra fronts the service with it.
