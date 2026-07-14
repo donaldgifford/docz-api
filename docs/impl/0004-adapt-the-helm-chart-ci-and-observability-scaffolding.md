@@ -13,7 +13,6 @@ created: 2026-07-13
 **Status:** Draft **Author:** Donald Gifford **Date:** 2026-07-13
 
 <!--toc:start-->
-
 - [Objective](#objective)
 - [Scope](#scope)
   - [In Scope](#in-scope)
@@ -837,10 +836,12 @@ Operator-facing assets in docz-api vocabulary. (INV-0004 Obs. 6.)
       + outside-the-auth-gate; PromQL for 5xx rate / p99 latency / ingest failure
       rate; import instructions naming the real JSON; two-path alert usage.
       `prettier --check` + `markdownlint-cli2` clean.
-- [ ] **7.4 Final sweep:**
+- [x] **7.4 Final sweep:**
       `grep -ri 'repo_guardian\|repo-guardian\|valkey' contrib/` → empty;
       `just lint-alerts` green; `docz update` to refresh doc indexes if any docs
-      changed.
+      changed. **Done:** contrib sweep clean; `just lint-alerts` → "6 rules
+      found"; `docz update` ran (index READMEs idempotent — no drift; only a
+      cosmetic TOC reformat in this doc).
 
 #### Success Criteria
 
