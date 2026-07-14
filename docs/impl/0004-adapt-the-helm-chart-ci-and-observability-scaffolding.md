@@ -460,7 +460,7 @@ OQ-3, OQ-9.)
       `hpa.yaml`/`ingress.yaml`/`httproute.yaml` — leave gated off by the new
       `autoscaling`/`ingress`/`httpRoute` values from 2.3 and make sure the
       values keys they reference all exist.
-- [ ] **2.8 `Chart.yaml`:** `appVersion: "v0.4.0"` (per OQ-9a — latest release
+- [x] **2.8 `Chart.yaml`:** `appVersion: "v0.4.0"` (per OQ-9a — latest release
       tag), keep `version: 0.1.0` (first published chart version).
 - [ ] **2.9 Rewrite `templates/NOTES.txt`** for docz-api: deployed message, how
       to port-forward
