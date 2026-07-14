@@ -703,7 +703,7 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       import dir) behind `profiles: [auth]` (OQ-8a). All mounts are `./dev/…` —
       correct relative to `deploy/`. No postgres/meili/app services. Verify:
       `docker compose -f deploy/compose.monitoring.yaml config -q`.
-- [ ] **6.3 Fix `deploy/dev/prometheus/prometheus.yaml`:** job `docz-api`,
+- [x] **6.3 Fix `deploy/dev/prometheus/prometheus.yaml`:** job `docz-api`,
       target `host.docker.internal:8080`, `metrics_path: /metrics`, external
       label `service: docz-api`; keep the otel-collector self-scrape.
 - [ ] **6.4 Fix grafana provisioning:** in `datasources.yaml` pin
