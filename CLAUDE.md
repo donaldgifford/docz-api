@@ -855,6 +855,31 @@ established as the build progresses:
     `repo:donaldgifford/docz-api:*`, the `docz-api` ECR repo, the three
     `ECR_*` secrets). `ecr.yml`/`ghcr.yml` keep `workflow_dispatch` + the
     Phase-1.3 bake-metadata step.
+- **Phase 6 — Local monitoring stack: IN PROGRESS** (6.1–6.6 done) —
+  `deploy/compose.monitoring.yaml` (`name: docz-api-monitoring`) runs the
+  observability backends only (prometheus/grafana/otel-collector/jaeger/loki/
+  alloy always-on; keycloak behind `--profile auth`), paired with the app run on
+  the host (`just run`) or in containers, pointed at
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`. All bind mounts are
+  `./dev/…` relative to `deploy/`. Verify: `up -d --wait` → all six always-on
+  containers Healthy (rc=0).
+  - **GOTCHA — jaeger `all-in-one:latest` is a trap.** `latest` moved to the v2
+    line (v1 hit EOL 2025-12-31) which restructures the CLI/config, and the
+    non-root image user can't `mkdir` under a root-owned badger volume
+    (`/badger/key: permission denied`). Pin **`jaegertracing/all-in-one:1.76.0`**
+    + **`SPAN_STORAGE_TYPE: memory`** (dev backend — traces are inspected live,
+    not persisted; no volume needed). Dropped the `jaeger_data` volume.
+  - **GOTCHA — the `loki` exporter was removed from
+    `otel/opentelemetry-collector-contrib`.** Push logs via **`otlphttp`** to
+    Loki's native OTLP ingest: `endpoint: http://loki:3100/otlp` (otlphttp
+    appends `/v1/logs`). Loki 3.x accepts OTLP by default.
+  - **otel-collector has NO metrics pipeline** — docz-api metrics are pull-based
+    (Prometheus scrapes `/metrics` directly per `dev/prometheus/prometheus.yaml`),
+    so the copied `prometheusremotewrite` exporter + metrics pipeline were deleted
+    (INV-0004 Obs. 5e). Only traces (→ jaeger) and logs (→ loki) pipelines remain.
+    App logs also flow via **alloy** (docker-stdout tail → `loki.write`), so LOG
+    output needs `LOG_FORMAT=json` for alloy's JSON stage to extract
+    `trace_id`/`span_id` labels.
 
 ## Renovate
 

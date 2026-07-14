@@ -720,13 +720,22 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       duration
       (`histogram_quantile(0.95, sum by (le, reason) (rate(docz_api_ingest_job_duration_seconds_bucket[15m])))`).
       Verify JSON: `jq empty <file>`.
-- [ ] **6.6 Otel-collector + alloy:** in `otel-collector.yaml` delete the
+- [x] **6.6 Otel-collector + alloy:** in `otel-collector.yaml` delete the
       metrics pipeline + prometheusremotewrite exporter (docz-api is pull-based;
       the pipeline is dead weight per INV-0004 Obs. 5e) and rebrand comments; in
       `config.alloy` rebrand comments (rfc-api → docz-api). Verify: monitoring
       stack starts
       (`docker compose -f deploy/compose.monitoring.yaml up -d --wait` then
-      `down`).
+      `down`). **Done:** `up -d --wait` returns rc=0 with all six always-on
+      containers Healthy; jaeger UI + prometheus `/-/ready` both 200. Two latent
+      breakages in the copied stack (surfaced by this task's "stack starts"
+      verify) were also fixed: (a) jaeger `all-in-one:latest` moved to v2/EOL and
+      its badger store can't `mkdir` under the root-owned volume as the non-root
+      image user — pinned to `1.76.0` + switched to `SPAN_STORAGE_TYPE: memory`
+      (dev backend; traces inspected live, not persisted) and dropped the
+      `jaeger_data` volume; (b) the standalone `loki` exporter was removed from
+      collector-contrib — swapped for `otlphttp/loki` → Loki's native OTLP ingest
+      (`http://loki:3100/otlp`).
 - [ ] **6.7 Rewrite the keycloak realm**
       (`deploy/dev/keycloak/docz-api-realm.json`, per OQ-8a): realm `docz-api`;
       ONE confidential client `docz-api` (`publicClient: false`,

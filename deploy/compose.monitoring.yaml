@@ -17,7 +17,6 @@ volumes:
   prom_data: {}
   grafana_data: {}
   loki_data: {}
-  jaeger_data: {}
   keycloak_data: {}
 
 services:
@@ -66,17 +65,16 @@ services:
       - jaeger
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    # Pinned to the v1 line (v2 restructures the all-in-one CLI/config surface).
+    # In-memory span storage: this is a dev trace backend — traces are inspected
+    # live, not persisted, so badger's on-disk store (which the non-root image
+    # user can't write to a root-owned volume) is unnecessary here.
+    image: jaegertracing/all-in-one:1.76.0
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
-      SPAN_STORAGE_TYPE: badger
-      BADGER_EPHEMERAL: "false"
-      BADGER_DIRECTORY_VALUE: /badger/data
-      BADGER_DIRECTORY_KEY: /badger/key
+      SPAN_STORAGE_TYPE: memory
     ports:
       - "16686:16686"
-    volumes:
-      - jaeger_data:/badger
 
   loki:
     image: grafana/loki:latest
