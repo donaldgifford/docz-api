@@ -446,7 +446,7 @@ OQ-3, OQ-9.)
       `_helpers.tpl` to exactly the env names this deployment now sets. Delete
       tailscale's force-set of `WEBHOOK_IP_ALLOWLIST*`/`TRUST_PROXY_HEADERS`
       (repo-guardian-only) while keeping the sidecar per OQ-3a.
-- [ ] **2.5 `templates/secret.yaml`:** add keys `session-secret`
+- [x] **2.5 `templates/secret.yaml`:** add keys `session-secret`
       (`secrets.sessionSecret`) and `oauth-client-secret`
       (`secrets.oauthClientSecret`) beside the existing `app-id`,
       `webhook-secret`, `private-key`; keep the `existingSecret` bypass
