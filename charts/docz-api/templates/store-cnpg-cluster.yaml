@@ -3,7 +3,7 @@
 # CloudNativePG Cluster CR. Requires the cloudnative-pg operator
 # already installed in the cluster. CNPG creates a `<name>-app`
 # Secret holding the DSN under the `uri` key, which the
-# repo-guardian Deployment references.
+# docz-api Deployment references.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -18,8 +18,8 @@ spec:
   primaryUpdateStrategy: unsupervised
   bootstrap:
     initdb:
-      database: repoguardian
-      owner: repoguardian
+      database: doczapi
+      owner: doczapi
   storage:
     size: {{ .Values.store.postgres.cnpg.storage.size }}
     {{- with .Values.store.postgres.cnpg.storage.storageClass }}

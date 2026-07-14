@@ -100,14 +100,14 @@ Resource name for the chart-rendered Meilisearch StatefulSet + Service
 {{- end -}}
 
 {{/*
-Secret name holding STORE_DSN. Three modes:
-  - `external`: operator's existingSecret (required).
+Secret name holding DATABASE_URL. Three modes:
+  - `external`: operator's store.external.existingSecret (required).
   - `baked`:    chart-rendered Secret (postgresFullname).
   - `cnpg`:     CNPG-created `<cluster>-app` Secret.
 */}}
 {{- define "docz-api.storeSecretName" -}}
 {{- if eq .Values.store.postgres.mode "external" -}}
-{{- required "store.postgres.existingSecret is required when store.postgres.mode=external" .Values.store.postgres.existingSecret -}}
+{{- required "store.external.existingSecret is required when store.postgres.mode=external" .Values.store.external.existingSecret -}}
 {{- else if eq .Values.store.postgres.mode "cnpg" -}}
 {{- printf "%s-app" (include "docz-api.postgresFullname" .) -}}
 {{- else -}}
@@ -116,17 +116,17 @@ Secret name holding STORE_DSN. Three modes:
 {{- end -}}
 
 {{/*
-Secret key holding STORE_DSN. CNPG always writes connection strings
-under the `uri` key; baked uses the chart-controlled `STORE_DSN`;
-external honours `existingSecretKey`.
+Secret key holding DATABASE_URL. CNPG always writes connection strings
+under the `uri` key; baked uses the chart-controlled `DATABASE_URL`;
+external honours store.external.secretKey.
 */}}
 {{- define "docz-api.storeSecretKey" -}}
 {{- if eq .Values.store.postgres.mode "external" -}}
-{{- .Values.store.postgres.existingSecretKey | default "STORE_DSN" -}}
+{{- .Values.store.external.secretKey | default "DATABASE_URL" -}}
 {{- else if eq .Values.store.postgres.mode "cnpg" -}}
 uri
 {{- else -}}
-STORE_DSN
+DATABASE_URL
 {{- end -}}
 {{- end -}}
 

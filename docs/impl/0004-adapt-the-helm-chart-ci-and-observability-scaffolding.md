@@ -495,7 +495,7 @@ missing third dependency. (INV-0004 Obs. 2b, 2c, 2h; OQ-1, OQ-2, OQ-6.)
 
 #### Tasks
 
-- [ ] **3.1 Store rename + rewire.** In `store-postgres.yaml`,
+- [x] **3.1 Store rename + rewire.** In `store-postgres.yaml`,
       `store-postgres-secret.yaml`, `store-cnpg-cluster.yaml` (kept per OQ-2a):
       db + user `repoguardian` → `doczapi`; the emitted secret key `STORE_DSN` →
       `DATABASE_URL` (same `postgres://…?sslmode=disable` DSN shape); update the

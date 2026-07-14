@@ -169,13 +169,8 @@ store:
     # -- Source of the Postgres deployment. One of:
     # "baked"    — chart renders a single-pod Postgres Deployment;
     # "cnpg"     — chart renders a CloudNativePG `Cluster` CR;
-    # "external" — operator provides DSN via existingSecret.
+    # "external" — operator provides DATABASE_URL via store.external.
     mode: baked
-    # -- Operator-supplied secret holding STORE_DSN. Required when
-    # mode=external.
-    existingSecret: ""
-    # -- Key inside existingSecret holding the DSN. Default: STORE_DSN.
-    existingSecretKey: STORE_DSN
     # -- Connection cap for the pgx pool.
     maxConns: 16
     # -- Baked Postgres-only configuration.
@@ -236,6 +231,13 @@ store:
           labels:
             bgp.cilium.io/advertise-service: default
             bgp.cilium.io/ip-pool: default
+  # -- External Postgres. Used only when store.postgres.mode=external.
+  external:
+    # -- Operator-supplied secret holding the DATABASE_URL DSN. Required
+    # when store.postgres.mode=external.
+    existingSecret: ""
+    # -- Key inside existingSecret holding the DSN. Default: DATABASE_URL.
+    secretKey: DATABASE_URL
 
 # -- Work queue + session store (Valkey, Redis-wire-compatible).
 queue:

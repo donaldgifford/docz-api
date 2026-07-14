@@ -32,7 +32,7 @@ spec:
               name: postgres
           env:
             - name: POSTGRES_DB
-              value: repoguardian
+              value: doczapi
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
@@ -54,7 +54,7 @@ spec:
           {{- end }}
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "repoguardian", "-d", "repoguardian"]
+              command: ["pg_isready", "-U", "doczapi", "-d", "doczapi"]
             initialDelaySeconds: 10
             periodSeconds: 10
   volumeClaimTemplates:
