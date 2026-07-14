@@ -686,8 +686,8 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
 
 #### Tasks
 
-- [ ] **6.1 Delete `deploy/compose.dev.yaml`** (untracked; plain `rm`).
-- [ ] **6.2 Create `deploy/compose.monitoring.yaml`** (per OQ-7a): single YAML
+- [x] **6.1 Delete `deploy/compose.dev.yaml`** (untracked; plain `rm`).
+- [x] **6.2 Create `deploy/compose.monitoring.yaml`** (per OQ-7a): single YAML
       document, modeline + `name: docz-api-monitoring`; services prometheus
       (`prom/prometheus`, 9090, mount `./dev/prometheus/prometheus.yaml` →
       `/etc/prometheus/prometheus.yml`,
