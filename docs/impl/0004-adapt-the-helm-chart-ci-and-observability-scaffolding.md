@@ -709,7 +709,7 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
 - [x] **6.4 Fix grafana provisioning:** in `datasources.yaml` pin
       `uid: prometheus` and `uid: loki` explicitly (dashboard panels bind those
       uids); in `dashboards.yaml` provider/folder → `docz-api`.
-- [ ] **6.5 Rewrite the overview dashboard**
+- [x] **6.5 Rewrite the overview dashboard**
       (`deploy/dev/grafana/provisioning/dashboards/docz-api-overview.json`):
       title "docz-api overview", uid `docz-api-overview`, tags `["docz-api"]`;
       fix every query to the `docz_api_` prefix; DELETE the in-flight panel (no
