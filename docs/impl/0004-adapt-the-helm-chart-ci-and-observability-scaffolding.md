@@ -604,7 +604,7 @@ test suite and docs. (INV-0004 Obs. 2e, 2g.)
       (debug|info|warn|error), `config.logFormat` (text|json); types for the
       value blocks introduced in 2.3. Keep it permissive elsewhere
       (`additionalProperties: true`) — it's a guardrail, not a straitjacket.
-- [ ] **4.5 Docs:** rewrite `README.md.gotmpl` for docz-api (what it deploys,
+- [x] **4.5 Docs:** rewrite `README.md.gotmpl` for docz-api (what it deploys,
       the three dependency modes, secrets contract incl. the five-key
       existing-secret shape, OCI install
       `helm install docz-api oci://ghcr.io/donaldgifford/charts/docz-api`,
