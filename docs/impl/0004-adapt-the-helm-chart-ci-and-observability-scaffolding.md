@@ -753,7 +753,7 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       **Also fixed a latent 6.2 bug:** the copied `quay.io/keycloak/keycloak:26`
       tag doesn't exist (quay publishes only full version tags, no floating major)
       — pinned to `26.7.0`. `deploy/` is now fully rfc-api-clean.
-- [ ] **6.8 justfile + env plumbing:** recipes `monitor-up`
+- [x] **6.8 justfile + env plumbing:** recipes `monitor-up`
       (`docker compose -f deploy/compose.monitoring.yaml up -d --wait` + echo of
       the UI URLs), `monitor-auth-up` (same with `--profile auth`),
       `monitor-down` (`--profile auth down`), `monitor-logs`. In `.env.example`
@@ -762,7 +762,15 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       keycloak block (`AUTH_PROVIDERS=github,keycloak`,
       `KEYCLOAK_ISSUER=http://localhost:8180/realms/docz-api`,
       `KEYCLOAK_CLIENT_ID=docz-api`,
-      `KEYCLOAK_CLIENT_SECRET=dev-docz-api-secret`).
+      `KEYCLOAK_CLIENT_SECRET=dev-docz-api-secret`). **Done:** four `[group('monitor')]`
+      recipes added (mirroring the `local-*` `*_compose`-var style); smoke-tested
+      `just monitor-up` (all backends Healthy + URL echo) → `just monitor-down`.
+      `.env.example` gets a dedicated "Local monitoring stack" block with the
+      concrete dev keycloak values + `LOG_FORMAT=json`. **Deviation:** the OTEL
+      endpoint is `localhost:4318` **without** the `http://` scheme the task text
+      shows — docz-api's telemetry uses `otlptracehttp.WithEndpoint`, which takes
+      host:port (a scheme is parsed as the hostname and breaks export); this
+      matches the pre-existing correct entry.
 - [ ] **6.9 Docs:** DEVELOPMENT.md — new "Local monitoring stack" subsection
       (what runs where: grafana :3000, prometheus :9090, jaeger :16686, keycloak
       :8180; how it pairs with `just run` AND `just local-up`; the

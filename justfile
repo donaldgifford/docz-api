@@ -136,6 +136,43 @@ local-ps:
 local-logs:
     @{{ local_compose }} logs -f
 
+# ─── Monitoring stack ───────────────────────────────────────────────
+
+monitor_compose := "docker compose -f deploy/compose.monitoring.yaml"
+
+# Start the local observability backends (prometheus/grafana/jaeger/loki/otel/alloy)
+[group('monitor')]
+monitor-up:
+    @{{ monitor_compose }} up -d --wait
+    @echo "✓ Monitoring stack up:"
+    @echo "    grafana     http://localhost:3000  (anonymous admin)"
+    @echo "    prometheus  http://localhost:9090"
+    @echo "    jaeger      http://localhost:16686"
+    @echo "    loki        http://localhost:3100"
+    @echo "    otel OTLP   http://localhost:4318  (set OTEL_EXPORTER_OTLP_ENDPOINT to this)"
+    @echo "    alloy       http://localhost:12345"
+
+# Start the monitoring stack with keycloak for local OIDC login testing
+[group('monitor')]
+monitor-auth-up:
+    @{{ monitor_compose }} --profile auth up -d --wait
+    @echo "✓ Monitoring stack up (+ keycloak):"
+    @echo "    grafana     http://localhost:3000  (anonymous admin)"
+    @echo "    prometheus  http://localhost:9090"
+    @echo "    jaeger      http://localhost:16686"
+    @echo "    keycloak    http://localhost:8180  (realm docz-api; user dev/dev-password)"
+
+# Stop the monitoring stack (keycloak included); volumes are kept
+[group('monitor')]
+monitor-down:
+    @{{ monitor_compose }} --profile auth down
+    @echo "✓ Monitoring stack stopped"
+
+# Follow monitoring stack logs (all services)
+[group('monitor')]
+monitor-logs:
+    @{{ monitor_compose }} --profile auth logs -f
+
 # ─── Helm ───────────────────────────────────────────────────────────
 
 # Lint the chart (ci-values supplies the required values with no defaults)
