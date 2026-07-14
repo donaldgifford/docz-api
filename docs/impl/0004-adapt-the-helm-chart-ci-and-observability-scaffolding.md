@@ -649,7 +649,7 @@ OQ-4, OQ-5, OQ-10.)
     port ci2's broken `labeler` job (its only step misuses actions/labeler with
     a checkout name; `Label PR` + `pr-labels.yml` already cover labeling).
     Delete `ci2.yml`. Verify: `just lint-actions`.
-- [ ] **5.2 Merge `release2.yml` into `release.yml`:** append the `publish-ghcr`
+- [x] **5.2 Merge `release2.yml` into `release.yml`:** append the `publish-ghcr`
       and `publish-ecr` jobs (with their permissions blocks and explanatory
       comments verbatim — the nested-SLSA permissions ceilings are
       load-bearing), keep the existing bump-version + release jobs untouched,
