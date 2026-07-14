@@ -67,14 +67,17 @@ tests:
               severity: critical
           any: true
 
-  - it: should not reference repo_guardian metrics
+  - it: should reference only docz-api metric namespaces
     set:
       prometheusRule:
         enabled: true
     asserts:
-      - notMatchRegex:
-          path: spec.groups[0].rules[0].expr
-          pattern: repo_guardian_
+      - matchRegex:
+          path: spec.groups[0].rules[1].expr
+          pattern: docz_api_http_requests_total
+      - matchRegex:
+          path: spec.groups[0].rules[3].expr
+          pattern: docz_api_ingest_jobs_total
 
   - it: should set additional labels
     set:

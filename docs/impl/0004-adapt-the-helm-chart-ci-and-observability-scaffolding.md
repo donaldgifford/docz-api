@@ -612,7 +612,7 @@ test suite and docs. (INV-0004 Obs. 2e, 2g.)
       `^https://github.com/donaldgifford/docz-api/.+`), regenerate with
       `just helm-docs`; fix `CHANGELOG.md` header and `cliff.toml`'s
       `[changelog].header` string to say docz-api.
-- [ ] **4.6 Full local gate:**
+- [x] **4.6 Full local gate:**
       `just helm-lint && just helm-template && just helm-unittest` all green;
       `grep -ri 'repo.guardian\|repo_guardian' charts/` prints nothing
       (case-insensitive, both spellings).

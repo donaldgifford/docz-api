@@ -801,6 +801,37 @@ established as the build progresses:
     gained `search.meili.masterKey: ci-dummy`. The `repoguardian`/`STORE_DSN`/
     `QUEUE_VALKEY_DSN` grep is clean in `templates/`; residual hits live only in
     the generated `README.md` (Phase 4.5) and `tests/` (Phase 4.3).
+- **Phase 4 — Chart observability, tests, docs: COMPLETE ✅** — monitoring
+  points at real metrics, the chart's behavior is frozen by a rewritten test
+  suite, and the docs are docz-api. **`charts/` is now completely free of
+  `repo-guardian`/`repo_guardian`** (both spellings, case-insensitive).
+  - **ServiceMonitor** scrapes port `http` at `/metrics`, gated on
+    `metrics.enabled AND serviceMonitor.enabled`. **PrometheusRule** is 5
+    docz-api RED alerts (`DoczAPIDown` critical, `DoczAPIHighErrorRate`,
+    `DoczAPISlowRequests`, `DoczAPIIngestFailures`, `DoczAPISlowIngest`) over
+    the four real metrics — `docz_api_http_requests_total`,
+    `docz_api_http_request_duration_seconds_bucket`,
+    `docz_api_ingest_jobs_total`, `docz_api_ingest_job_duration_seconds_bucket`
+    — plus `up`.
+  - **helm-unittest suite: 8 files / 58 tests, all green** (`just helm-unittest`).
+    Each starts with the `helm-testsuite` `$schema` modeline. helm-unittest
+    renders only the templates a suite lists, so each suite provides just its
+    own template's `required` values via a suite-level `set:` (the deployment
+    only needs `config.authRedirectBase`; the meili secret needs
+    `search.meili.masterKey`). Fullname under the default release is
+    `RELEASE-NAME-docz-api`.
+  - **deployment `volumeMounts` is guarded** (`{{- if or .privateKeyAsFile
+    .extraVolumeMounts }}`) so it's omitted, not emitted as `null`, when the
+    key is passed via env and there are no extra mounts.
+  - **`values.schema.json`** is a permissive guardrail (`additionalProperties:
+    true` everywhere): enums for the three backend `mode`s + `config.logLevel`
+    /`logFormat`, typed blocks for config/metrics/otel/secrets/store/queue/
+    search. Rejects `store.postgres.mode=memory` / `config.logLevel=trace` at
+    render time.
+  - **README** is generated from `README.md.gotmpl` via `just helm-docs`; the
+    committed `README.md` is regen-idempotent (`git diff --exit-code`). Chart
+    `CHANGELOG.md` + `cliff.toml` `[changelog].header` say docz-api. `ct lint
+    --config ct.yaml` passes locally.
 
 ## Renovate
 
