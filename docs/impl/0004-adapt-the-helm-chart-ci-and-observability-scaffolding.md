@@ -598,7 +598,7 @@ test suite and docs. (INV-0004 Obs. 2e, 2g.)
       `prometheusrule_test.yaml` (five alert names present, no `repo_guardian_`
       strings), `serviceaccount_test.yaml` (keep, rename expectations). Verify
       continuously with `just helm-unittest`.
-- [ ] **4.4 `values.schema.json` rewrite:** title "docz-api Helm chart values";
+- [x] **4.4 `values.schema.json` rewrite:** title "docz-api Helm chart values";
       enums for `store.postgres.mode` (baked|cnpg|external), `queue.valkey.mode`
       (baked|external), `search.meili.mode` (baked|external), `config.logLevel`
       (debug|info|warn|error), `config.logFormat` (text|json); types for the
