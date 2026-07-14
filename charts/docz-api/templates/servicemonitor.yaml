@@ -1,4 +1,4 @@
-{{- if .Values.serviceMonitor.enabled -}}
+{{- if and .Values.metrics.enabled .Values.serviceMonitor.enabled -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -14,6 +14,7 @@ spec:
     matchLabels:
       {{- include "docz-api.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: metrics
+    - port: http
+      path: /metrics
       interval: {{ .Values.serviceMonitor.interval }}
 {{- end }}

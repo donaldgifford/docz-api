@@ -564,7 +564,7 @@ test suite and docs. (INV-0004 Obs. 2e, 2g.)
 
 #### Tasks
 
-- [ ] **4.1 `templates/servicemonitor.yaml`:** scrape port `http` (docz-api
+- [x] **4.1 `templates/servicemonitor.yaml`:** scrape port `http` (docz-api
       serves `/metrics` on the main listener), add `path: /metrics`; gate the
       whole template on `metrics.enabled` AND `serviceMonitor.enabled`.
 - [ ] **4.2 Rewrite `templates/prometheusrule.yaml`:** group `docz-api.rules`
