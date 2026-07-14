@@ -814,12 +814,16 @@ Operator-facing assets in docz-api vocabulary. (INV-0004 Obs. 6.)
       chart; group `docz-api` has the five shared alerts (plain Prometheus
       annotation templating, no Helm escapes) + `DoczAPINoScrapes`.
       `promtool check rules` → "6 rules found".
-- [ ] **7.2 Rewrite the dashboard** as
+- [x] **7.2 Rewrite the dashboard** as
       `contrib/grafana/docz-api-dashboard.json`: start from the Phase 6.5
       overview dashboard; convert to import-style (add an `__inputs` block with
       `DS_PROMETHEUS`, replace pinned datasource uids with `${DS_PROMETHEUS}`;
       drop the Loki/Jaeger panels — operators may not run those); title
       "docz-api", uid `docz-api`, tags `["docz-api"]`. Verify: `jq empty`.
+      **Done:** import-style with `__inputs`/`__requires`; the five Prometheus
+      panels (rate/latency/error + ingest rate/p95) all reference
+      `${DS_PROMETHEUS}`; Loki + Jaeger panels dropped. `jq empty` clean; every
+      query uses `docz_api_*`; title/uid/tags = `docz-api`.
 - [ ] **7.3 Rewrite `contrib/README.md`:** document the four `docz_api_*`
       metrics + label sets (from the Reference section) and the Go/process
       defaults, scrape target `:8080/metrics` (+ `METRICS_ENABLED`), example
