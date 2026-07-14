@@ -855,7 +855,7 @@ established as the build progresses:
     `repo:donaldgifford/docz-api:*`, the `docz-api` ECR repo, the three
     `ECR_*` secrets). `ecr.yml`/`ghcr.yml` keep `workflow_dispatch` + the
     Phase-1.3 bake-metadata step.
-- **Phase 6 — Local monitoring stack: IN PROGRESS** (6.1–6.7 done) —
+- **Phase 6 — Local monitoring stack: COMPLETE ✅** (6.1–6.9) —
   `deploy/compose.monitoring.yaml` (`name: docz-api-monitoring`) runs the
   observability backends only (prometheus/grafana/otel-collector/jaeger/loki/
   alloy always-on; keycloak behind `--profile auth`), paired with the app run on
@@ -890,6 +890,21 @@ established as the build progresses:
     App logs also flow via **alloy** (docker-stdout tail → `loki.write`), so LOG
     output needs `LOG_FORMAT=json` for alloy's JSON stage to extract
     `trace_id`/`span_id` labels.
+  - **verified end-to-end (6.9 close-out):** ran the built binary on `:8081`
+    against the stack with `OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4318`; after a
+    traffic burst, Prometheus's `docz-api` target is `health=up`,
+    `docz_api_http_requests_total{route,method,status}` increments (the exact
+    series the overview dashboard queries), and Jaeger shows `docz-api` traces
+    with span names = chi route templates (`GET /api/v1/*`, `GET /openapi.yaml`)
+    + `http.route`/`http.response.status_code` tags. Keycloak login is verified
+    structurally (realm imports, issuer + auth/token endpoints resolve, confidential
+    client + verified dev user seeded); the browser round-trip is a manual step.
+  - **NOTE — collector logs two benign deprecation warnings** (`otlp` →
+    `otlp_grpc`, `otlphttp` → `otlp_http` exporter-type aliases). Still functional
+    in collector-contrib v0.156; left as the canonical names. The always-on images
+    (collector/prometheus/grafana/loki/alloy) still float `:latest` — jaeger +
+    keycloak are pinned because `:latest`/`:26` broke (see gotchas above); a full
+    pin-all pass is a possible follow-up.
 
 ## Renovate
 
