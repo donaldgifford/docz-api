@@ -452,7 +452,7 @@ OQ-3, OQ-9.)
       `webhook-secret`, `private-key`; keep the `existingSecret` bypass
       (document in values comments that an existing secret must carry all five
       keys).
-- [ ] **2.6 `templates/service.yaml`:** single `http` port (`service.port` →
+- [x] **2.6 `templates/service.yaml`:** single `http` port (`service.port` →
       targetPort `http`); delete the metrics port.
 - [ ] **2.7 Fix the four helm-create leftovers** (they now find the `docz-api.*`
       helpers from 2.1): `tests/test-connection.yaml` — point the wget at
