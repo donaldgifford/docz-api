@@ -134,6 +134,7 @@ spec:
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- if or .Values.secrets.privateKeyAsFile .Values.extraVolumeMounts }}
           volumeMounts:
             {{- if .Values.secrets.privateKeyAsFile }}
             - name: github-private-key
@@ -143,6 +144,7 @@ spec:
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- end }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}

@@ -583,7 +583,7 @@ test suite and docs. (INV-0004 Obs. 2e, 2g.)
   - `DoczAPISlowIngest`:
     `histogram_quantile(0.99, sum by (le) (rate(docz_api_ingest_job_duration_seconds_bucket[30m]))) > 120`
     for 15m.
-- [ ] **4.3 Rewrite the helm-unittest suite** (`tests/`): delete the remaining
+- [x] **4.3 Rewrite the helm-unittest suite** (`tests/`): delete the remaining
       repo-guardian suites and write fresh ones, each starting with
       `# yaml-language-server: $schema=https://json.schemastore.org/helm-testsuite.json`:
       `deployment_test.yaml` (image ref honors repository+tag/appVersion;
