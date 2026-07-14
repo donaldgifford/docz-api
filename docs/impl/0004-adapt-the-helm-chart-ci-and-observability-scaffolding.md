@@ -771,12 +771,16 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       shows — docz-api's telemetry uses `otlptracehttp.WithEndpoint`, which takes
       host:port (a scheme is parsed as the hostname and breaks export); this
       matches the pre-existing correct entry.
-- [ ] **6.9 Docs:** DEVELOPMENT.md — new "Local monitoring stack" subsection
+- [x] **6.9 Docs:** DEVELOPMENT.md — new "Local monitoring stack" subsection
       (what runs where: grafana :3000, prometheus :9090, jaeger :16686, keycloak
       :8180; how it pairs with `just run` AND `just local-up`; the
       OTEL/LOG_FORMAT env to set; keycloak login walkthrough); deploy/README.md
       — Layout entries for `compose.monitoring.yaml` + `dev/`. prettier +
-      markdownlint clean.
+      markdownlint clean. **Done:** DEVELOPMENT.md gets the subsection with a
+      backend/URL/purpose table + both run-mode env guidance + the keycloak
+      walkthrough; deploy/README.md Layout gains `compose.monitoring.yaml` +
+      `dev/` entries. `prettier --check` + `markdownlint-cli2` both clean (URLs
+      backticked to satisfy MD034).
 
 #### Success Criteria
 
