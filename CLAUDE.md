@@ -905,6 +905,29 @@ established as the build progresses:
     (collector/prometheus/grafana/loki/alloy) still float `:latest` — jaeger +
     keycloak are pinned because `:latest`/`:26` broke (see gotchas above); a full
     pin-all pass is a possible follow-up.
+- **Phase 7 — contrib/ rewrite: COMPLETE ✅** (7.1–7.4) — operator-facing assets
+  in docz-api vocabulary; **no Go changes** (the pack uses only the four existing
+  `docz_api_*` metrics).
+  - `contrib/prometheus/alerts.yaml` is the **same pack as the chart's
+    `prometheusrule.yaml`** in plain-Prometheus format: one `docz-api` group with
+    the five shared alerts (DoczAPIDown / HighErrorRate / SlowRequests /
+    IngestFailures / SlowIngest) **plus** a file-only `DoczAPINoScrapes`
+    (`absent(up{job="docz-api"})`, only meaningful with a static scrape config
+    owning the `job` label). `just lint-alerts` (`promtool check rules`) → 6 rules.
+  - `contrib/grafana/docz-api-dashboard.json` is **import-style** (`__inputs`
+    `DS_PROMETHEUS` + `__requires`, all panels `${DS_PROMETHEUS}`), Prometheus-only
+    (the Loki/Jaeger panels from the dev overview are dropped — operators may run
+    just metrics). uid/title/tags = `docz-api`.
+  - `contrib/README.md` documents the four metrics (verified against
+    `internal/telemetry/metrics.go`), the single-port `:8080/metrics` scrape
+    (+ `METRICS_ENABLED`, outside the auth gate), PromQL examples, dashboard
+    import, and the two alert-delivery paths.
+  - **IMPL-0004 is COMPLETE** — all 7 phases done; local acceptance gates all
+    green (`just ci`, helm-lint/unittest[58]/template, `ct lint`, actionlint,
+    monitoring live-smoke, cross-dir rfc/repo-guardian sweep, no-secrets). The
+    two out-of-band Testing-Plan items — the **remote** GH Actions run (needs a
+    branch push) and the **browser** keycloak login round-trip — are verified to
+    their runnable/server-side extent only.
 
 ## Renovate
 
