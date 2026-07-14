@@ -462,7 +462,7 @@ OQ-3, OQ-9.)
       values keys they reference all exist.
 - [x] **2.8 `Chart.yaml`:** `appVersion: "v0.4.0"` (per OQ-9a — latest release
       tag), keep `version: 0.1.0` (first published chart version).
-- [ ] **2.9 Rewrite `templates/NOTES.txt`** for docz-api: deployed message, how
+- [x] **2.9 Rewrite `templates/NOTES.txt`** for docz-api: deployed message, how
       to port-forward
       (`kubectl port-forward svc/… 8080:{{ .Values.service.port }}`), probe/spec
       URLs (`/healthz`, `/readyz`, `/openapi.yaml`), webhook endpoint
