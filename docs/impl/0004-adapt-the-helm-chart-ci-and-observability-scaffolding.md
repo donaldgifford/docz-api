@@ -736,7 +736,7 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       `jaeger_data` volume; (b) the standalone `loki` exporter was removed from
       collector-contrib — swapped for `otlphttp/loki` → Loki's native OTLP ingest
       (`http://loki:3100/otlp`).
-- [ ] **6.7 Rewrite the keycloak realm**
+- [x] **6.7 Rewrite the keycloak realm**
       (`deploy/dev/keycloak/docz-api-realm.json`, per OQ-8a): realm `docz-api`;
       ONE confidential client `docz-api` (`publicClient: false`,
       `standardFlowEnabled: true`, secret `dev-docz-api-secret`,
@@ -746,7 +746,13 @@ monitoring stack. (INV-0004 Obs. 5; OQ-7, OQ-8.)
       `rfc-api`/`rfc-site` clients. Verify: `jq empty` + stack boots with
       `--profile auth` and
       `curl -fsS localhost:8180/realms/docz-api/.well-known/openid-configuration`
-      returns the issuer.
+      returns the issuer. **Done:** realm rewritten (dropped both rfc clients +
+      the rfc-flavored realm roles); `jq empty` clean; `--profile auth`
+      `up -d --wait` rc=0, keycloak Up, issuer =
+      `http://localhost:8180/realms/docz-api` with matching auth/token endpoints.
+      **Also fixed a latent 6.2 bug:** the copied `quay.io/keycloak/keycloak:26`
+      tag doesn't exist (quay publishes only full version tags, no floating major)
+      — pinned to `26.7.0`. `deploy/` is now fully rfc-api-clean.
 - [ ] **6.8 justfile + env plumbing:** recipes `monitor-up`
       (`docker compose -f deploy/compose.monitoring.yaml up -d --wait` + echo of
       the UI URLs), `monitor-auth-up` (same with `--profile auth`),

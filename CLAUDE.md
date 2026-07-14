@@ -855,7 +855,7 @@ established as the build progresses:
     `repo:donaldgifford/docz-api:*`, the `docz-api` ECR repo, the three
     `ECR_*` secrets). `ecr.yml`/`ghcr.yml` keep `workflow_dispatch` + the
     Phase-1.3 bake-metadata step.
-- **Phase 6 — Local monitoring stack: IN PROGRESS** (6.1–6.6 done) —
+- **Phase 6 — Local monitoring stack: IN PROGRESS** (6.1–6.7 done) —
   `deploy/compose.monitoring.yaml` (`name: docz-api-monitoring`) runs the
   observability backends only (prometheus/grafana/otel-collector/jaeger/loki/
   alloy always-on; keycloak behind `--profile auth`), paired with the app run on
@@ -873,6 +873,16 @@ established as the build progresses:
     `otel/opentelemetry-collector-contrib`.** Push logs via **`otlphttp`** to
     Loki's native OTLP ingest: `endpoint: http://loki:3100/otlp` (otlphttp
     appends `/v1/logs`). Loki 3.x accepts OTLP by default.
+  - **GOTCHA — `quay.io/keycloak/keycloak` has no floating major tag.** `:26`
+    404s (quay publishes only full version tags); pin a concrete patch
+    (`26.7.0`). Keycloak (`--profile auth`) imports `dev/keycloak/
+    docz-api-realm.json` on boot: realm `docz-api`, one **confidential** client
+    `docz-api` (secret `dev-docz-api-secret`, redirect
+    `http://localhost:8080/auth/callback`), dev user `dev`/`dev-password` with a
+    **verified** `dev@localhost` (docz-api's OIDCProvider drops unverified
+    emails). Issuer: `http://localhost:8180/realms/docz-api`. No healthcheck on
+    the keycloak service, so `--wait` doesn't gate on realm-import readiness —
+    poll the `.well-known/openid-configuration` endpoint.
   - **otel-collector has NO metrics pipeline** — docz-api metrics are pull-based
     (Prometheus scrapes `/metrics` directly per `dev/prometheus/prometheus.yaml`),
     so the copied `prometheusremotewrite` exporter + metrics pipeline were deleted
