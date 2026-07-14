@@ -832,6 +832,29 @@ established as the build progresses:
     committed `README.md` is regen-idempotent (`git diff --exit-code`). Chart
     `CHANGELOG.md` + `cliff.toml` `[changelog].header` say docz-api. `ct lint
     --config ct.yaml` passes locally.
+- **Phase 5 — CI + release consolidation: COMPLETE ✅** — one CI workflow, one
+  Release workflow; the `ci2.yml`/`release2.yml` scaffolding duplicates are
+  deleted; `just lint-actions` (actionlint) is clean.
+  - **`ci.yml`** folds in the `changes` (dorny/paths-filter) job + the four
+    path-gated jobs: `lint-alerts` (`just lint-alerts`), `docker-build`
+    (buildx/bake — PR pushes `:dev`, post-merge cache-only), `helm-unittest`
+    (plugin install + unittest), `helm-test` (ct lint + kind install). The
+    richer Go jobs (Lint incl. openapi, Test Go + Codecov, Security =
+    govulncheck + Trivy, Build + SBOM scan) + Label PR stay. All `make` →
+    `just`.
+  - **`release.yml`** appends the `publish-ghcr` + `publish-ecr` reusable-workflow
+    jobs (their nested-SLSA `actions: read`/`packages: write` permission
+    ceilings are load-bearing — omitting them fails the whole run at startup)
+    and adds top-level `id-token: write`. **No GPG signing** (OQ-4a): the GPG
+    import step + `GPG_FINGERPRINT` are dropped (secrets don't exist,
+    `.goreleaser.yml` has no signing config); goreleaser keeps producing
+    unsigned archives, while images/charts are cosign-signed + SLSA-attested by
+    the publish workflows. `pr-semver-bump` lives only in `release.yml`.
+  - **ECR publishing** is gated on the `ECR_PUBLISH_ENABLED` repo variable and
+    documented in `docs/operations/ecr-publish-setup.md` (OIDC role trust
+    `repo:donaldgifford/docz-api:*`, the `docz-api` ECR repo, the three
+    `ECR_*` secrets). `ecr.yml`/`ghcr.yml` keep `workflow_dispatch` + the
+    Phase-1.3 bake-metadata step.
 
 ## Renovate
 

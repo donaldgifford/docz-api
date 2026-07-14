@@ -662,7 +662,7 @@ OQ-4, OQ-5, OQ-10.)
       `repo:donaldgifford/docz-api:*`, two ECR repos, the three secrets, the
       `ECR_PUBLISH_ENABLED` repo variable) so `ecr.yml`'s reference is real. Run
       `prettier --write` + `markdownlint-cli2` on it.
-- [ ] **5.4 Sanity-check workflow wiring:** `.github/workflows` contains no
+- [x] **5.4 Sanity-check workflow wiring:** `.github/workflows` contains no
       `make` invocations (`git grep -nE '\bmake [a-z-]+' .github/workflows` →
       empty), no duplicate workflow `name:` values
       (`grep -h '^name:' .github/workflows/*.yml | sort | uniq -d` → empty).
