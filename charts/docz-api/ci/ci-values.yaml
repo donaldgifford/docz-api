@@ -24,7 +24,10 @@ secrets:
 
 search:
   meili:
-    masterKey: "ci-dummy"
+    # Meilisearch v1.12 rejects a master key < 16 bytes at startup ("production
+    # environment"), so `ct install` needs a >=16-byte dummy (helm lint/template
+    # never run the container, but the kind install does).
+    masterKey: "ci-dummy-master-key-0123456789"
 
 livenessProbe: null
 readinessProbe: null
