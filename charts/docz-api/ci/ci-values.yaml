@@ -22,6 +22,10 @@ secrets:
   sessionSecret: "ci-dummy"
   oauthClientSecret: "ci-dummy"
 
+search:
+  meili:
+    masterKey: "ci-dummy"
+
 livenessProbe: null
 readinessProbe: null
 

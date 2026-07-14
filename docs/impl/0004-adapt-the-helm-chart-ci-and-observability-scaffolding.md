@@ -528,7 +528,7 @@ missing third dependency. (INV-0004 Obs. 2b, 2c, 2h; OQ-1, OQ-2, OQ-6.)
         secretKey: MEILI_API_KEY
   ```
 
-- [ ] **3.4 Wire the deployment:** `MEILI_HOST` =
+- [x] **3.4 Wire the deployment:** `MEILI_HOST` =
       `http://<fullname>-meilisearch:7700` in baked mode, `search.meili.host` in
       external mode (helper mirroring the store/queue pattern); `MEILI_API_KEY`
       from the mode-appropriate secret. Add `search.meili.masterKey: "ci-dummy"`

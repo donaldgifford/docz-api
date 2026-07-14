@@ -79,21 +79,12 @@ spec:
                   name: {{ include "docz-api.queueSecretName" . }}
                   key: {{ include "docz-api.queueSecretKey" . }}
             - name: MEILI_HOST
-              {{- if eq .Values.search.meili.mode "external" }}
-              value: {{ required "search.meili.host is required when search.meili.mode=external" .Values.search.meili.host | quote }}
-              {{- else }}
-              value: "http://{{ include "docz-api.meiliFullname" . }}:7700"
-              {{- end }}
+              value: {{ include "docz-api.meiliHost" . | quote }}
             - name: MEILI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  {{- if eq .Values.search.meili.mode "external" }}
-                  name: {{ required "search.meili.external.existingSecret is required when search.meili.mode=external" .Values.search.meili.external.existingSecret }}
-                  key: {{ .Values.search.meili.external.secretKey | default "MEILI_API_KEY" }}
-                  {{- else }}
-                  name: {{ include "docz-api.meiliFullname" . }}
-                  key: MEILI_API_KEY
-                  {{- end }}
+                  name: {{ include "docz-api.searchSecretName" . }}
+                  key: {{ include "docz-api.searchSecretKey" . }}
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:

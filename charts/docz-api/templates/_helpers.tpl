@@ -151,3 +151,38 @@ Secret key holding REDIS_URL.
 REDIS_URL
 {{- end -}}
 {{- end -}}
+
+{{/*
+MEILI_HOST value. Baked mode targets the chart-rendered headless
+Service; external mode uses the operator-supplied host URL (required).
+*/}}
+{{- define "docz-api.meiliHost" -}}
+{{- if eq .Values.search.meili.mode "external" -}}
+{{- required "search.meili.host is required when search.meili.mode=external" .Values.search.meili.host -}}
+{{- else -}}
+{{- printf "http://%s:7700" (include "docz-api.meiliFullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Secret name holding MEILI_API_KEY. Baked mode uses the chart-rendered
+Secret (meiliFullname); external mode uses the operator's existingSecret.
+*/}}
+{{- define "docz-api.searchSecretName" -}}
+{{- if eq .Values.search.meili.mode "external" -}}
+{{- required "search.meili.external.existingSecret is required when search.meili.mode=external" .Values.search.meili.external.existingSecret -}}
+{{- else -}}
+{{- include "docz-api.meiliFullname" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Secret key holding MEILI_API_KEY.
+*/}}
+{{- define "docz-api.searchSecretKey" -}}
+{{- if eq .Values.search.meili.mode "external" -}}
+{{- .Values.search.meili.external.secretKey | default "MEILI_API_KEY" -}}
+{{- else -}}
+MEILI_API_KEY
+{{- end -}}
+{{- end -}}
