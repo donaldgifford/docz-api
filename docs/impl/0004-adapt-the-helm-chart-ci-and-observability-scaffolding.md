@@ -803,14 +803,17 @@ Operator-facing assets in docz-api vocabulary. (INV-0004 Obs. 6.)
 
 #### Tasks
 
-- [ ] **7.1 Rewrite `contrib/prometheus/alerts.yaml`:** modeline
+- [x] **7.1 Rewrite `contrib/prometheus/alerts.yaml`:** modeline
       `# yaml-language-server: $schema=https://json.schemastore.org/prometheus.rules.json`;
       one group `docz-api` containing the same five alerts as Phase 4.2 (same
       names/expressions — the chart's PrometheusRule and this file are the same
       pack in two formats; note that in a header comment) plus
       `DoczAPINoScrapes`: `absent(up{job="docz-api"}) == 1` for 10m (with a
       comment that the `job` label must match the operator's scrape config).
-      Verify: `just lint-alerts`.
+      Verify: `just lint-alerts`. **Done:** header comment cross-references the
+      chart; group `docz-api` has the five shared alerts (plain Prometheus
+      annotation templating, no Helm escapes) + `DoczAPINoScrapes`.
+      `promtool check rules` → "6 rules found".
 - [ ] **7.2 Rewrite the dashboard** as
       `contrib/grafana/docz-api-dashboard.json`: start from the Phase 6.5
       overview dashboard; convert to import-style (add an `__inputs` block with
