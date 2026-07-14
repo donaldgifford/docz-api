@@ -48,7 +48,7 @@ aws ecr get-login-password --region <region> | \
     --username AWS --password-stdin
 
 helm install docz-api \
-  oci://<account>.dkr.ecr.<region>.amazonaws.com/docz-api-chart \
+  oci://<account>.dkr.ecr.<region>.amazonaws.com/docz-api \
   --version 0.1.0 \
   --namespace docz-api \
   --create-namespace \

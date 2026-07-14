@@ -656,7 +656,7 @@ OQ-4, OQ-5, OQ-10.)
       and per OQ-4a do NOT port the GPG import step. Delete `release2.yml`.
       Verify: `just lint-actions`;
       `git grep -l 'pr-semver-bump' .github/workflows` shows only `release.yml`.
-- [ ] **5.3 Re-home the ECR setup doc:** create
+- [x] **5.3 Re-home the ECR setup doc:** create
       `docs/operations/ecr-publish-setup.md` (adapted from the deleted chart doc
       / ecr.yml's comment: IAM OIDC role trust for
       `repo:donaldgifford/docz-api:*`, two ECR repos, the three secrets, the
