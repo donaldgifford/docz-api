@@ -467,7 +467,7 @@ OQ-3, OQ-9.)
       (`kubectl port-forward svc/… 8080:{{ .Values.service.port }}`), probe/spec
       URLs (`/healthz`, `/readyz`, `/openapi.yaml`), webhook endpoint
       `/webhooks/github` (+ tailscale funnel URL block only when enabled).
-- [ ] **2.10 Update `ci/ci-values.yaml`:** keep busybox + `sleep 900` + nulled
+- [x] **2.10 Update `ci/ci-values.yaml`:** keep busybox + `sleep 900` + nulled
       probes, and add dummies for every `required` value so render/lint pass:
       `config.appId: "000000"`,
       `config.authRedirectBase: "http://localhost:8080"`,

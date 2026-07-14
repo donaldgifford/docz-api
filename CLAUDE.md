@@ -739,6 +739,39 @@ established as the build progresses:
   `ct.yaml` tag removed); bake build args restored; publish workflows compute
   build metadata; orphan `deploy/.env.dev.example` removed; helm + `lint-alerts`
   just recipes added.
+- **Phase 2 — Chart core made renderable: COMPLETE ✅** — the chart's own
+  surface (helpers, deployment, service, secret, NOTES, Chart.yaml, ci-values)
+  now renders + lints clean against the docz-api config. `just helm-template`
+  and `just helm-lint` both pass (Phase 2's only acceptance gate). Conventions:
+  - **All helpers are `docz-api.*`** (renamed from `repo-guardian.*`); the dead
+    `validateTemplatingVars`/`reservedEnvVars`/`templating.vars` machinery is
+    gone. Added `docz-api.meiliFullname` (used by the deployment now; the
+    Meilisearch resources land in Phase 3.3).
+  - **`deployment.yaml` env is the IMPL-0004 Reference table verbatim**:
+    `HTTP_ADDR` from `config.port`; app-secret refs for
+    `GITHUB_APP_ID`/`GITHUB_WEBHOOK_SECRET`/`SESSION_SECRET`/
+    `GITHUB_OAUTH_CLIENT_SECRET`; `GITHUB_APP_PRIVATE_KEY` as a mounted file at
+    `/etc/docz-api/private-key/private-key.pem` (when `secrets.privateKeyAsFile`)
+    else env-from-secret; `DATABASE_URL`/`REDIS_URL`/`MEILI_HOST`/`MEILI_API_KEY`
+    via the store/queue/search secret helpers; `AUTH_REDIRECT_BASE`
+    `required`-checked; plain-value optionals (`GITHUB_API_BASE`, `SESSION_TTL`,
+    `INGEST_DEBOUNCE`, `OTEL_*`) emitted only when non-empty via `with`. One
+    `http` containerPort (no metrics port); distroless `runAsUser: 65532`.
+  - **`secret.yaml` carries five keys** (app-id, webhook-secret, private-key,
+    session-secret, oauth-client-secret); `existingSecret` bypass must supply all
+    five. **`service.yaml` is one `http` port** (`service.port` → targetPort
+    `http`). **`Chart.yaml` `appVersion: "v0.4.0"`** (latest release tag; drives
+    the default image tag), chart `version: 0.1.0`.
+  - **`ci/ci-values.yaml`** is the render/lint fixture: busybox + `sleep 900`,
+    nulled probes, and a dummy for every `required` value — needed because the
+    chart has no defaults for secrets/app-id/redirect-base.
+  - **Deferred by design** (the whole-templates-dir grep criteria clear only when
+    these land): `STORE_DSN`→`DATABASE_URL` / `QUEUE_VALKEY_DSN`→`REDIS_URL`
+    secret-key renames + cnpg `repo-guardian` comment (Phase 3.1/3.2); the stale
+    repo-guardian **helm-unittest suite** (`tests/`) rewrite (Phase 4.3); the
+    `prometheusrule.yaml` `repo-guardian` alert text + `README.md.gotmpl` /
+    `just helm-docs` regen (Phase 4.4/4.5). So `just helm-unittest` and
+    `just helm-docs` are intentionally NOT green mid-Phase-2/3.
 
 ## Renovate
 

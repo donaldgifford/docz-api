@@ -1,0 +1,28 @@
+---
+# CI render/lint values. Overrides the container to a no-op busybox and
+# supplies a dummy for every `required` value so `helm lint`/`helm template`/
+# `ct` pass without real secrets. NOT a deployable config.
+image:
+  repository: busybox
+  tag: latest
+
+command:
+  - sleep
+  - "900"
+
+config:
+  appId: "000000"
+  authRedirectBase: "http://localhost:8080"
+  githubOAuthClientID: "ci-dummy"
+
+secrets:
+  webhookSecret: "ci-dummy"
+  privateKey: "ci-dummy"
+  privateKeyAsFile: false
+  sessionSecret: "ci-dummy"
+  oauthClientSecret: "ci-dummy"
+
+livenessProbe: null
+readinessProbe: null
+
+resources: {}
