@@ -131,23 +131,23 @@ DATABASE_URL
 {{- end -}}
 
 {{/*
-Secret name holding QUEUE_VALKEY_DSN.
+Secret name holding REDIS_URL.
 */}}
 {{- define "docz-api.queueSecretName" -}}
 {{- if eq .Values.queue.valkey.mode "external" -}}
-{{- required "queue.valkey.existingSecret is required when queue.valkey.mode=external" .Values.queue.valkey.existingSecret -}}
+{{- required "queue.external.existingSecret is required when queue.valkey.mode=external" .Values.queue.external.existingSecret -}}
 {{- else -}}
 {{- include "docz-api.valkeyFullname" . -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Secret key holding QUEUE_VALKEY_DSN.
+Secret key holding REDIS_URL.
 */}}
 {{- define "docz-api.queueSecretKey" -}}
 {{- if eq .Values.queue.valkey.mode "external" -}}
-{{- .Values.queue.valkey.existingSecretKey | default "QUEUE_VALKEY_DSN" -}}
+{{- .Values.queue.external.secretKey | default "REDIS_URL" -}}
 {{- else -}}
-QUEUE_VALKEY_DSN
+REDIS_URL
 {{- end -}}
 {{- end -}}

@@ -247,12 +247,8 @@ queue:
   valkey:
     # -- Source of the Valkey deployment. One of:
     # "baked"    — chart renders a single-pod Valkey Deployment;
-    # "external" — operator provides DSN via existingSecret.
+    # "external" — operator provides REDIS_URL via queue.external.
     mode: baked
-    # -- Operator-supplied secret holding QUEUE_VALKEY_DSN.
-    existingSecret: ""
-    # -- Key inside existingSecret holding the DSN.
-    existingSecretKey: QUEUE_VALKEY_DSN
     # -- Baked Valkey-only configuration.
     baked:
       # -- Pinned image. Bump intentionally.
@@ -263,6 +259,13 @@ queue:
       storageClassName: ""
       # -- Generated AUTH password length (random alphanumeric).
       authPasswordLength: 32
+  # -- External Valkey/Redis. Used only when queue.valkey.mode=external.
+  external:
+    # -- Operator-supplied secret holding the REDIS_URL DSN. Required
+    # when queue.valkey.mode=external.
+    existingSecret: ""
+    # -- Key inside existingSecret holding the DSN. Default: REDIS_URL.
+    secretKey: REDIS_URL
 
 # -- Full-text search (Meilisearch). Filled out in Phase 3; the chart
 # runs a baked single-pod Meilisearch by default.

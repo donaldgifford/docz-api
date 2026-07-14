@@ -502,7 +502,7 @@ missing third dependency. (INV-0004 Obs. 2b, 2c, 2h; OQ-1, OQ-2, OQ-6.)
       store secret-key helper in `_helpers.tpl` accordingly; external mode keys
       become `store.external.existingSecret` + `store.external.secretKey`
       (default `DATABASE_URL`).
-- [ ] **3.2 Queue rewire** (per OQ-6a: keep valkey image + `queue.valkey.*`
+- [x] **3.2 Queue rewire** (per OQ-6a: keep valkey image + `queue.valkey.*`
       keys): in `queue-valkey-secret.yaml` the emitted key `QUEUE_VALKEY_DSN` →
       `REDIS_URL`; external mode `queue.external.existingSecret` +
       `queue.external.secretKey` (default `REDIS_URL`).
