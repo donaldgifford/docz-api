@@ -635,7 +635,7 @@ OQ-4, OQ-5, OQ-10.)
 
 #### Tasks
 
-- [ ] **5.1 Merge `ci2.yml` into `ci.yml`** (per OQ-5a). Final `ci.yml` job set:
+- [x] **5.1 Merge `ci2.yml` into `ci.yml`** (per OQ-5a). Final `ci.yml` job set:
       `changes` (dorny/paths-filter from ci2, filters
       go/docker/helm/workflows/alerts), existing `Label PR`, existing `Lint`
       (golangci + openapi via mise), `lint-alerts` (NEW: mise step +
