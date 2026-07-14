@@ -45,10 +45,9 @@ spec:
             - containerPort: {{ .Values.config.port }}
               name: http
               protocol: TCP
-            - containerPort: {{ .Values.config.metricsPort }}
-              name: metrics
-              protocol: TCP
           env:
+            - name: HTTP_ADDR
+              value: ":{{ .Values.config.port }}"
             - name: GITHUB_APP_ID
               valueFrom:
                 secretKeyRef:
@@ -60,95 +59,86 @@ spec:
                   name: {{ include "docz-api.secretName" . }}
                   key: webhook-secret
             {{- if .Values.secrets.privateKeyAsFile }}
-            - name: GITHUB_PRIVATE_KEY_PATH
-              value: /etc/repo-guardian/private-key/private-key.pem
+            - name: GITHUB_APP_PRIVATE_KEY
+              value: /etc/docz-api/private-key/private-key.pem
             {{- else }}
-            - name: GITHUB_PRIVATE_KEY
+            - name: GITHUB_APP_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "docz-api.secretName" . }}
                   key: private-key
             {{- end }}
-            - name: LISTEN_ADDR
-              value: ":{{ .Values.config.port }}"
-            - name: METRICS_ADDR
-              value: ":{{ .Values.config.metricsPort }}"
-            - name: LOG_LEVEL
-              value: {{ .Values.config.logLevel | quote }}
-            - name: DRY_RUN
-              value: {{ .Values.config.dryRun | quote }}
-            - name: WORKER_COUNT
-              value: {{ .Values.config.workerCount | quote }}
-            - name: QUEUE_SIZE
-              value: {{ .Values.config.queueSize | quote }}
-            - name: SCHEDULE_INTERVAL
-              value: {{ .Values.config.scheduleInterval | quote }}
-            - name: SKIP_FORKS
-              value: {{ .Values.config.skipForks | quote }}
-            - name: SKIP_ARCHIVED
-              value: {{ .Values.config.skipArchived | quote }}
-            - name: AUTO_CLOSE_PR
-              value: {{ .Values.policy.autoClosePR | quote }}
-            - name: WEBHOOK_IP_ALLOWLIST
-              value: {{ .Values.webhookIPAllowlist.enabled | quote }}
-            {{- if .Values.tailscale.enabled }}
-            - name: WEBHOOK_IP_ALLOWLIST_FAIL_OPEN
-              value: "true"
-            - name: TRUST_PROXY_HEADERS
-              value: "true"
-            {{- else }}
-            - name: WEBHOOK_IP_ALLOWLIST_FAIL_OPEN
-              value: {{ .Values.webhookIPAllowlist.failOpen | quote }}
-            - name: TRUST_PROXY_HEADERS
-              value: {{ .Values.webhookIPAllowlist.trustProxyHeaders | quote }}
-            {{- end }}
-            - name: STORE_BACKEND
-              value: {{ .Values.store.backend | quote }}
-            - name: QUEUE_BACKEND
-              value: {{ .Values.queue.backend | quote }}
-            - name: SCHEDULER_BACKEND
-              value: {{ .Values.scheduler.backend | quote }}
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            {{- if eq .Values.store.backend "postgres" }}
-            - name: STORE_POSTGRES_MAX_CONNS
-              value: {{ .Values.store.postgres.maxConns | quote }}
-            - name: STORE_DSN
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ include "docz-api.storeSecretName" . }}
                   key: {{ include "docz-api.storeSecretKey" . }}
-            - name: RECONCILE_FRESHNESS
-              value: {{ .Values.staleSweep.freshness | quote }}
-            - name: STALE_SWEEP_BATCH_SIZE
-              value: {{ .Values.staleSweep.batchSize | quote }}
-            - name: RATE_LIMIT_RESERVE
-              value: {{ .Values.staleSweep.rateLimitReserve | quote }}
-            {{- end }}
-            - name: DISCOVERY_ENABLED
-              value: {{ .Values.discovery.enabled | quote }}
-            - name: DISCOVERY_INTERVAL
-              value: {{ .Values.discovery.interval | quote }}
-            - name: DISCOVERY_RESERVE_FRACTION
-              value: {{ .Values.discovery.reserveFraction | quote }}
-            - name: DISCOVERY_ESTIMATED_COST_PER_REPO
-              value: {{ .Values.discovery.estimatedCostPerRepo | quote }}
-            {{- if eq .Values.queue.backend "valkey" }}
-            - name: QUEUE_VALKEY_DSN
+            - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ include "docz-api.queueSecretName" . }}
                   key: {{ include "docz-api.queueSecretKey" . }}
-            - name: JOB_ACK_TIMEOUT
-              value: {{ .Values.queue.valkey.jobAckTimeout | quote }}
-            - name: REAPER_INTERVAL
-              value: {{ .Values.queue.valkey.reaperInterval | quote }}
+            - name: MEILI_HOST
+              {{- if eq .Values.search.meili.mode "external" }}
+              value: {{ required "search.meili.host is required when search.meili.mode=external" .Values.search.meili.host | quote }}
+              {{- else }}
+              value: "http://{{ include "docz-api.meiliFullname" . }}:7700"
+              {{- end }}
+            - name: MEILI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq .Values.search.meili.mode "external" }}
+                  name: {{ required "search.meili.external.existingSecret is required when search.meili.mode=external" .Values.search.meili.external.existingSecret }}
+                  key: {{ .Values.search.meili.external.secretKey | default "MEILI_API_KEY" }}
+                  {{- else }}
+                  name: {{ include "docz-api.meiliFullname" . }}
+                  key: MEILI_API_KEY
+                  {{- end }}
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "docz-api.secretName" . }}
+                  key: session-secret
+            - name: AUTH_REDIRECT_BASE
+              value: {{ required "config.authRedirectBase is required" .Values.config.authRedirectBase | quote }}
+            - name: AUTH_PROVIDERS
+              value: {{ .Values.config.authProviders | quote }}
+            - name: GITHUB_OAUTH_CLIENT_ID
+              value: {{ .Values.config.githubOAuthClientID | quote }}
+            - name: GITHUB_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "docz-api.secretName" . }}
+                  key: oauth-client-secret
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.config.logFormat | quote }}
+            - name: METRICS_ENABLED
+              value: {{ .Values.metrics.enabled | quote }}
+            {{- with .Values.config.githubApiBase }}
+            - name: GITHUB_API_BASE
+              value: {{ . | quote }}
             {{- end }}
-            {{- range $k, $v := .Values.templating.vars }}
-            - name: {{ $k }}
-              value: {{ $v | quote }}
+            {{- with .Values.config.sessionTTL }}
+            - name: SESSION_TTL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.ingestDebounce }}
+            - name: INGEST_DEBOUNCE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.otel.endpoint }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.otel.serviceName }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.otel.sampleRate }}
+            - name: OTEL_SAMPLE_RATE
+              value: {{ . | quote }}
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -156,7 +146,7 @@ spec:
           volumeMounts:
             {{- if .Values.secrets.privateKeyAsFile }}
             - name: github-private-key
-              mountPath: /etc/repo-guardian/private-key
+              mountPath: /etc/docz-api/private-key
               readOnly: true
             {{- end }}
             {{- with .Values.extraVolumeMounts }}

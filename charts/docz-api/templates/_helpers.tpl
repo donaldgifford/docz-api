@@ -74,18 +74,6 @@ Create the name of the secret to use.
 {{- end }}
 
 {{/*
-Reserved env-var names — keys that the chart already manages on the
-Deployment container env list. `templating.vars` may not redeclare any
-of these because the chart-emitted entry would shadow the operator's
-attempt and produce confusing behavior at runtime.
-
-Returns a space-separated string for has-element style checks.
-*/}}
-{{- define "docz-api.reservedEnvVars" -}}
-GITHUB_APP_ID GITHUB_WEBHOOK_SECRET GITHUB_PRIVATE_KEY GITHUB_PRIVATE_KEY_PATH LISTEN_ADDR METRICS_ADDR LOG_LEVEL DRY_RUN WORKER_COUNT QUEUE_SIZE SCHEDULE_INTERVAL SKIP_FORKS SKIP_ARCHIVED TEMPLATE_DIR WEBHOOK_IP_ALLOWLIST WEBHOOK_IP_ALLOWLIST_FAIL_OPEN TRUST_PROXY_HEADERS GUARDIAN_CONFIG STRICT_TEMPLATES STORE_BACKEND QUEUE_BACKEND SCHEDULER_BACKEND STORE_DSN STORE_POSTGRES_MAX_CONNS QUEUE_VALKEY_DSN JOB_ACK_TIMEOUT REAPER_INTERVAL POD_NAME RECONCILE_FRESHNESS STALE_SWEEP_BATCH_SIZE RATE_LIMIT_RESERVE
-{{- end }}
-
-{{/*
 Resource name for the chart-rendered Postgres deployment + Service +
 PVC + Secret. Always derived from the release fullname; the chart
 does not honour an existingSecret for the *baked* mode (the existing
@@ -101,6 +89,14 @@ PVC + Secret.
 */}}
 {{- define "docz-api.valkeyFullname" -}}
 {{- printf "%s-valkey" (include "docz-api.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Resource name for the chart-rendered Meilisearch StatefulSet + Service
++ PVC + Secret (baked mode).
+*/}}
+{{- define "docz-api.meiliFullname" -}}
+{{- printf "%s-meilisearch" (include "docz-api.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*

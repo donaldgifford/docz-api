@@ -427,7 +427,7 @@ OQ-3, OQ-9.)
       `targetCPUUtilizationPercentage: 80`); `ingress` (`enabled: false`,
       standard helm-create block); `httpRoute` (`enabled: false`, standard
       block).
-- [ ] **2.4 Rewrite `templates/deployment.yaml` env + mounts + ports** to the
+- [x] **2.4 Rewrite `templates/deployment.yaml` env + mounts + ports** to the
       Reference table exactly: keep the app-secret refs for
       `GITHUB_APP_ID`/`GITHUB_WEBHOOK_SECRET`; private key — when
       `secrets.privateKeyAsFile` mount the secret at
