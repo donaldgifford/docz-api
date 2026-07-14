@@ -824,14 +824,19 @@ Operator-facing assets in docz-api vocabulary. (INV-0004 Obs. 6.)
       panels (rate/latency/error + ingest rate/p95) all reference
       `${DS_PROMETHEUS}`; Loki + Jaeger panels dropped. `jq empty` clean; every
       query uses `docz_api_*`; title/uid/tags = `docz-api`.
-- [ ] **7.3 Rewrite `contrib/README.md`:** document the four `docz_api_*`
+- [x] **7.3 Rewrite `contrib/README.md`:** document the four `docz_api_*`
       metrics + label sets (from the Reference section) and the Go/process
       defaults, scrape target `:8080/metrics` (+ `METRICS_ENABLED`), example
       PromQL (error rate, p99 latency, ingest failure rate), dashboard import
       instructions pointing at the REAL filename
       (`contrib/grafana/docz-api-dashboard.json`), alert-pack usage (file for
       vanilla prometheus, chart `prometheusRule.enabled` for operator setups).
-      prettier + markdownlint clean.
+      prettier + markdownlint clean. **Done:** the four `docz_api_*` metrics
+      (verified against `internal/telemetry/metrics.go`) with exact label sets +
+      the `go_*`/`process_*` note; `:8080/metrics` single-port + `METRICS_ENABLED`
+      + outside-the-auth-gate; PromQL for 5xx rate / p99 latency / ingest failure
+      rate; import instructions naming the real JSON; two-path alert usage.
+      `prettier --check` + `markdownlint-cli2` clean.
 - [ ] **7.4 Final sweep:**
       `grep -ri 'repo_guardian\|repo-guardian\|valkey' contrib/` → empty;
       `just lint-alerts` green; `docz update` to refresh doc indexes if any docs
