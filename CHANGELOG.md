@@ -10,6 +10,10 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(helm)* Adapt the Helm chart, CI/publish pipeline, and observability scaffolding (IMPL-0004) ([#7](https://github.com/donaldgifford/docz-api/issues/7))
 - *(helm)* Source baked Meilisearch master key from an existing Secret
 
+### Bug Fixes
+
+- *(ci)* Stop govulncheck cache collision in Security Scan
+
 ### Documentation
 
 - *(repo-index)* Check off the IMPL-0003 testing plan
