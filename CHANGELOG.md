@@ -8,6 +8,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ### Features
 
 - *(helm)* Adapt the Helm chart, CI/publish pipeline, and observability scaffolding (IMPL-0004) ([#7](https://github.com/donaldgifford/docz-api/issues/7))
+- *(helm)* Source baked Meilisearch master key from an existing Secret
 
 ### Documentation
 
@@ -17,6 +18,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(deploy)* Document reusing the GitHub App as the OAuth login provider
 - *(deploy)* Note the email-permission exception in the permissions section
 - *(deploy)* Add an "Enabling Okta (OIDC)" section ([#8](https://github.com/donaldgifford/docz-api/issues/8))
+- *(deploy)* Note per-app Tailscale Funnel hostname for webhooks
 
 ### Miscellaneous Tasks
 
