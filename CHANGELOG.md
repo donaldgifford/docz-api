@@ -13,6 +13,8 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ### Bug Fixes
 
 - *(ci)* Stop govulncheck cache collision in Security Scan
+- *(deps)* Bump golang.org/x/text to v0.39.0 (GO-2026-5970)
+- *(deps)* Bump Go toolchain to 1.26.5 (GO-2026-5856)
 
 ### Documentation
 
