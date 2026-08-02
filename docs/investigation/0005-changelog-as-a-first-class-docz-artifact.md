@@ -27,6 +27,7 @@ created: 2026-08-02
   - [F5: Feature 2 (per-doc backlinks) cannot be built from the markdown alone](#f5-feature-2-per-doc-backlinks-cannot-be-built-from-the-markdown-alone)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
+  - [Review decisions (2026-08-02)](#review-decisions-2026-08-02)
   - [Proposed phasing](#proposed-phasing)
   - [Open questions (answer inline)](#open-questions-answer-inline)
 - [References](#references)
@@ -214,7 +215,8 @@ commit→file data from outside the changelog:
 - **(b) `git-cliff --context` artifact** — repos' release CI emits the context
   JSON (which has commit ids + can carry file lists) as a committed or attached
   artifact docz-api fetches. Zero GitHub API cost at ingest, but every repo's
-  release workflow must change — a fleet-wide rollout.
+  release workflow must change — a fleet-wide rollout. **Rejected in review**
+  (see Review decisions).
 - **(c) PR-number joins** — resolve the `(#N)` links to PRs → commits → files.
   Same API cost as (a) with more moving parts; only works for squash-merge PR
   flows (which the fleet does use).
@@ -242,6 +244,24 @@ shape provides and Option A at minimum must not obscure.
 
 ## Recommendation
 
+### Review decisions (2026-08-02)
+
+Reviewed; decisions recorded:
+
+- **Direction confirmed (F1/F2):** the docz-repo work happens first — the point
+  of investigating here was to derive the requirements docz-api hands to the
+  docz repo.
+- **Modeling confirmed (F3):** the changelog is not a doc type. It is an
+  `index.md`-like repo-level artifact and stays that way.
+- **The parser lives in the docz library (OQ-2 = a).** The alternative — serve
+  the raw git-cliff file rendered like `index.md`, plus an optional config key
+  pointing at a committed `git-cliff --context` artifact for parsing — was
+  weighed and rejected: the context artifact is a half measure, and rolling CI
+  changes across every fleet repo is strictly more expensive than shipping a
+  docz version and bumping the pin.
+- **Feature 2's data source narrows to F5 (a) or (c)** (compare API or PR-number
+  joins); (b) falls with the context artifact.
+
 ### Proposed phasing
 
 1. **docz (upstream):** add `Changelog{Enabled bool, File string}` to the config
@@ -256,7 +276,8 @@ shape provides and Option A at minimum must not obscure.
    1.1.0 → 1.2.0, natural-refresh rollout (DESIGN-0003 OQ-4a precedent).
 3. **docz-site:** render the changelog page from the raw markdown.
 4. **Feature 2:** new INV/DESIGN once feature 1 is serving — pick the
-   commit→file data source (F5 a/b/c) with real rate-limit numbers.
+   commit→file data source (F5 a or c; b rejected in review) with real
+   rate-limit numbers.
 
 ### Open questions (answer inline)
 
@@ -265,7 +286,10 @@ shape provides and Option A at minimum must not obscure.
   **(b)** raw + parsed sections in one response; **(c)** parsed only.
 - **OQ-2 — parser home (whenever structured parsing lands):** **(a)** docz
   library (`doczdoc`-style, contract-guarded) — _recommended_; **(b)** docz-api
-  internal package; **(c)** docz-site client-side.
+  internal package; **(c)** docz-site client-side. **Answered: (a)** — parser in
+  the docz library; the git-cliff context-artifact alternative is rejected
+  (fleet-wide CI rollout costs more than a docz release + pin bump; see Review
+  decisions).
 - **OQ-3 — `enabled: false` (and absent block) semantics in docz-api:** **(a)**
   honor strictly: skip the fetch and null the cached `changelog_md`/`sha` on
   next reconcile (desired-state; serving 404s) — _recommended, but note_: repos
