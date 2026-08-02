@@ -9,6 +9,10 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(chart)* Scope the main Service selector to the API pods (0.2.2) ([#12](https://github.com/donaldgifford/docz-api/issues/12))
 
+### Documentation
+
+- *(inv)* INV-0005 changelog as a first-class docz artifact
+
 ### Miscellaneous Tasks
 
 - Fix for external valkey secret
