@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 
 - *(inv)* INV-0005 changelog as a first-class docz artifact
+- *(inv)* Record INV-0005 review decisions (parser in docz, OQ-2=a)
 
 ### Miscellaneous Tasks
 
