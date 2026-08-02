@@ -1,7 +1,7 @@
 ---
 id: INV-0005
 title: "Changelog as a first-class docz artifact"
-status: Open
+status: Concluded
 author: Donald Gifford
 created: 2026-08-02
 ---
@@ -10,10 +10,9 @@ created: 2026-08-02
 
 # INV 0005: Changelog as a first-class docz artifact
 
-**Status:** Open **Author:** Donald Gifford **Date:** 2026-08-02
+**Status:** Concluded **Author:** Donald Gifford **Date:** 2026-08-02
 
 <!--toc:start-->
-
 - [Question](#question)
 - [Hypothesis](#hypothesis)
 - [Context](#context)
@@ -21,7 +20,7 @@ created: 2026-08-02
 - [Environment](#environment)
 - [Findings](#findings)
   - [F1: docz-api already fetches and caches the changelog — it just never serves it](#f1-docz-api-already-fetches-and-caches-the-changelog--it-just-never-serves-it)
-  - [F2: docz v1.0.0 silently ignores an unknown `changelog:` key — rollout is additive-safe](#f2-docz-v100-silently-ignores-an-unknown-changelog-key--rollout-is-additive-safe)
+  - [F2: docz v1.0.0 silently ignores an unknown changelog: key — rollout is additive-safe](#f2-docz-v100-silently-ignores-an-unknown-changelog-key--rollout-is-additive-safe)
   - [F3: A changelog is not doc-type-shaped — three modeling options](#f3-a-changelog-is-not-doc-type-shaped--three-modeling-options)
   - [F4: The git-cliff-everywhere convention makes structured parsing tractable — upstream](#f4-the-git-cliff-everywhere-convention-makes-structured-parsing-tractable--upstream)
   - [F5: Feature 2 (per-doc backlinks) cannot be built from the markdown alone](#f5-feature-2-per-doc-backlinks-cannot-be-built-from-the-markdown-alone)
@@ -261,6 +260,13 @@ Reviewed; decisions recorded:
   docz version and bumping the pin.
 - **Feature 2's data source narrows to F5 (a) or (c)** (compare API or PR-number
   joins); (b) falls with the context artifact.
+- **All open questions answered `a` (2026-08-02):** OQ-1a raw markdown serve,
+  OQ-2a parser in docz, OQ-3a strict `enabled` semantics, OQ-4a
+  repo-root-relative subpaths (see the convention note on OQ-4), OQ-5a no Meili
+  indexing, OQ-6a dedicated endpoint + spec 1.2.0, OQ-7a full contract clause.
+  The INV is **Concluded**; the docz-repo work is handed off via the temporary
+  design doc at `docs/TEMP-DESIGN-docz-changelog.md` (to be re-created with
+  `docz create design` in the docz repo and deleted here).
 
 ### Proposed phasing
 
@@ -284,6 +290,7 @@ Reviewed; decisions recorded:
 - **OQ-1 — serve shape for feature 1:** **(a)** raw markdown only
   (`{repo, changelog_md, changelog_sha}`, the `index.md` twin) — _recommended_;
   **(b)** raw + parsed sections in one response; **(c)** parsed only.
+  **Answered: (a).**
 - **OQ-2 — parser home (whenever structured parsing lands):** **(a)** docz
   library (`doczdoc`-style, contract-guarded) — _recommended_; **(b)** docz-api
   internal package; **(c)** docz-site client-side. **Answered: (a)** — parser in
@@ -297,22 +304,26 @@ Reviewed; decisions recorded:
   so there is no user-visible regression — but it makes the endpoint opt-in per
   repo from day one; **(b)** skip the fetch but keep the last cached value
   (stale forever); **(c)** keep today's unconditional fetch; config only gates
-  whether the endpoint serves it.
+  whether the endpoint serves it. **Answered: (a).**
 - **OQ-4 — `changelog.file` path semantics:** **(a)** repo-root-relative,
   subpaths allowed (`docs/CHANGELOG.md` works) — _recommended, matches
   git-cliff's repo-root convention_; **(b)** bare filename at repo root only;
-  **(c)** `docs_dir`-relative.
+  **(c)** `docs_dir`-relative. **Answered: (a)**, with the fleet convention
+  noted: the value is either `CHANGELOG.md` (repo root) or
+  `charts/<chart-name>/CHANGELOG.md` (helm-chart changelogs). Subpath support
+  exists precisely for the chart shape; no other layouts are in use.
 - **OQ-5 — Meilisearch:** index the changelog body? **(a)** no — repo-level
   artifact, not a searchable doc — _recommended_; **(b)** yes, as a
-  pseudo-document per repo.
+  pseudo-document per repo. **Answered: (a).**
 - **OQ-6 — wire shape:** **(a)** new
   `GET /api/v1/repos/{owner}/{name}/changelog` endpoint, spec minor bump to
   1.2.0 — _recommended_; **(b)** fold `changelog_md` into the existing repo
   detail/list DTOs (bloats list payloads; rejected by the
-  `raw_md`-is-detail-only precedent).
+  `raw_md`-is-detail-only precedent). **Answered: (a).**
 - **OQ-7 — contract surface:** when the docz pin bumps, add a doczcontract
   clause (R6) freezing `Config.Changelog` defaults + `ParseChangelog` behavior
   (if shipped)? **(a)** yes, both — _recommended_; **(b)** config field only.
+  **Answered: (a).**
 
 ## References
 
