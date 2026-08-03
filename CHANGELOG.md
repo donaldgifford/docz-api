@@ -14,10 +14,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(inv)* INV-0005 changelog as a first-class docz artifact
 - *(inv)* Record INV-0005 review decisions (parser in docz, OQ-2=a)
 - *(inv)* Conclude INV-0005 (all OQs=a) + portable docz design handoff
+- *(inv)* Verify docz v1.1.0 ships the changelog surface (F6)
 
 ### Miscellaneous Tasks
 
 - Fix for external valkey secret
+- *(mise)* Bump docz CLI to v1.1.0
 
 ## [0.4.2] - 2026-07-23
 
