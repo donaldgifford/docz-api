@@ -15,6 +15,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(inv)* Record INV-0005 review decisions (parser in docz, OQ-2=a)
 - *(inv)* Conclude INV-0005 (all OQs=a) + portable docz design handoff
 - *(inv)* Verify docz v1.1.0 ships the changelog surface (F6)
+- *(impl)* IMPL-0005 plan for the changelog endpoint
 
 ### Miscellaneous Tasks
 
