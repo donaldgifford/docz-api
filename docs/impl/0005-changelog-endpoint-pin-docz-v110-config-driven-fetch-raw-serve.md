@@ -13,6 +13,7 @@ created: 2026-08-03
 **Status:** In Progress **Author:** Donald Gifford **Date:** 2026-08-03
 
 <!--toc:start-->
+
 - [Objective](#objective)
 - [Scope](#scope)
   - [In Scope](#in-scope)
@@ -100,29 +101,29 @@ runtime-code-free by design.
 
 #### Tasks
 
-- [ ] Bump the pin: `go get github.com/donaldgifford/docz@v1.1.0` (**never** a
+- [x] Bump the pin: `go get github.com/donaldgifford/docz@v1.1.0` (**never** a
       bare `go mod tidy` — staged-dep rule), `go mod edit -fmt`; confirm no
       import-path changes (v1.1.0 keeps `pkg/doczcore/config` +
       `pkg/doczcore/document`, verified INV-0005 F6).
-- [ ] Freeze a **static** fleet-shaped changelog fixture at
+- [x] Freeze a **static** fleet-shaped changelog fixture at
       `internal/doczcontract/testdata/` (snapshot of a real git-cliff output:
       preamble + `[unreleased]` + ≥2 released versions with `*(scope)*` bullets
       and PR links). Static copy, not the live `CHANGELOG.md` — contract
       fixtures must not drift.
-- [ ] Add R6 config tests (`contract_test.go`, temp-dir + `HOME`-override
+- [x] Add R6 config tests (`contract_test.go`, temp-dir + `HOME`-override
       pattern already used by the R1–R5 tests):
       `DefaultConfig().Changelog == {false, "CHANGELOG.md"}`; partial block
       (`enabled: true` only) keeps the `File` default; explicit empty `file:`
       backfills; `./` prefix normalized; unknown **sibling** key still tolerated
       (the INV-0005 F2 rollout guarantee).
-- [ ] Add R6 parser tests: the frozen fixture parses to the exact
+- [x] Add R6 parser tests: the frozen fixture parses to the exact
       versions/dates/groups/items (bare-semver identity, `unreleased`
       canonicalized, scope markers + PR links intact in items);
       `errors.Is(err, doczdoc.ErrNoVersions)` on a no-headings input; empty
       input errors the same way.
-- [ ] Update `internal/doczcontract/doc.go` (R1–R5 → R1–R6) and the CLAUDE.md
+- [x] Update `internal/doczcontract/doc.go` (R1–R5 → R1–R6) and the CLAUDE.md
       docz-pin note (`v1.0.0` → `v1.1.0`).
-- [ ] `just test` / `just lint` / `just fmt` green; commit
+- [x] `just test` / `just lint` / `just fmt` green; commit
       (`feat(doczcontract): pin docz v1.1.0 + freeze changelog surface (R6)`).
 
 #### Success Criteria
@@ -132,6 +133,13 @@ runtime-code-free by design.
   docs.
 - R6 fails loudly if a future docz bump changes any pinned behavior (defaults,
   merge, normalization, parse shape, sentinel identity).
+
+**Status: COMPLETE ✅** — pin at v1.1.0 (plain require, import paths unchanged);
+`changelog_test.go` adds R6 over the frozen `testdata/changelog_fleet.md`
+fixture (defaults, partial-merge, `./` normalize, unknown-key tolerance,
+enabled-only validation, parse shape with v-trim + `ErrNoVersions`); `just test`
+/ `just lint` (0 issues) / `just fmt` green; change set confined to
+`go.mod`/`go.sum`, `doczcontract`, CLAUDE.md.
 
 ---
 
