@@ -320,7 +320,9 @@ Reviewed; decisions recorded:
   `docz create design` in the docz repo and deleted here).
 - **Upstream shipped and verified (2026-08-03):** docz v1.1.0 implements the
   handoff as its DESIGN-0010 — source-reviewed and probe-verified in F6; the
-  temporary design doc is deleted. Feature 1 is unblocked.
+  temporary design doc is deleted. Feature 1 is unblocked and planned as
+  **IMPL-0005** (five phases: pin+R6, persistence, fetch+webhook, endpoint at
+  spec 1.2.0, e2e + close-out).
 
 ### Proposed phasing
 
