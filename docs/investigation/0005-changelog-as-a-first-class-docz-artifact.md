@@ -13,6 +13,7 @@ created: 2026-08-02
 **Status:** Concluded **Author:** Donald Gifford **Date:** 2026-08-02
 
 <!--toc:start-->
+
 - [Question](#question)
 - [Hypothesis](#hypothesis)
 - [Context](#context)
@@ -24,6 +25,7 @@ created: 2026-08-02
   - [F3: A changelog is not doc-type-shaped — three modeling options](#f3-a-changelog-is-not-doc-type-shaped--three-modeling-options)
   - [F4: The git-cliff-everywhere convention makes structured parsing tractable — upstream](#f4-the-git-cliff-everywhere-convention-makes-structured-parsing-tractable--upstream)
   - [F5: Feature 2 (per-doc backlinks) cannot be built from the markdown alone](#f5-feature-2-per-doc-backlinks-cannot-be-built-from-the-markdown-alone)
+  - [F6: docz v1.1.0 ships the full surface — verified](#f6-docz-v110-ships-the-full-surface--verified)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
   - [Review decisions (2026-08-02)](#review-decisions-2026-08-02)
@@ -226,6 +228,55 @@ feature 1 must do so feature 2 slots in without rework: keep the version
 identity stable (SemVer string as the section key), which Option B's parsed
 shape provides and Option A at minimum must not obscure.
 
+### F6: docz v1.1.0 ships the full surface — verified
+
+_Addendum 2026-08-03._ docz **v1.1.0** (released 2026-08-03) implements the
+handoff design — upstream it is **DESIGN-0010** (the ported
+`TEMP-DESIGN-docz-changelog.md`, now deleted here per its lifecycle note).
+Verified two ways:
+
+**Source review (tag `v1.1.0`):**
+
+- `pkg/doczcore/config`: `ChangelogConfig{Enabled bool, File string}` with yaml
+  tags `enabled`/`file`; `Config.Changelog` under yaml key `changelog`;
+  `DefaultConfig()` returns `{false, DefaultChangelogFile}` with
+  `DefaultChangelogFile = "CHANGELOG.md"`. Partial-block merge falls out of
+  decode-in-place over `DefaultConfig()`; `normalizeChangelog` backfills an
+  explicit empty `file:` and strips `./` prefixes. Validation runs **only when
+  enabled** (dormant block stays unvalidated) and is stricter than specced:
+  rejects absolute paths, `..` traversal, trailing slash, backslashes, Windows
+  drive prefixes, control characters, `~` prefixes, and unclean segments.
+- `pkg/doczcore/document`: `ParseChangelog([]byte) (*Changelog, error)` with
+  `Changelog{Preamble, Versions}` /
+  `ChangelogVersion{Version, Unreleased, Date, Groups}` /
+  `ChangelogGroup{Title, Items}` and the `ErrNoVersions` sentinel — the spec
+  exactly, plus beyond-spec hardening: fenced-code-block awareness, CRLF
+  tolerance, `v`-trim only when a digit follows (`vnext` untouched), em/en-dash
+  date separators, duplicate headings preserved in document order. Items strip
+  the bullet marker (re-prefix with `-` and a space to render); column-0 prose
+  between bullets is discarded (documented as not-lossless). Upstream testdata
+  fixtures (`fleet`/`chart`/`edge`/`nopreamble`/`noversions`) mirror this INV's
+  testing strategy, including the unknown-sibling-key tolerance regression.
+- All three implementer OQs resolved as this INV leaned: **OQ-A** parser in the
+  `document` package (docz-api's existing `doczdoc` import — one import, no path
+  changes); **OQ-B** `Date` stays a string; **OQ-C** preamble verbatim.
+
+**Empirical probe** (scratch module pinning `v1.1.0`, run 2026-08-03):
+
+```text
+1. DefaultConfig().Changelog = {Enabled:false File:CHANGELOG.md}
+2. Load(partial block + unknown sibling) err=<nil>
+   Changelog={Enabled:true File:CHANGELOG.md}
+3. ParseChangelog(docz-api CHANGELOG.md): preamble=222B versions=7
+   [0] ver="unreleased" unreleased=true date="" groups=3
+   [1] ver="0.4.2" date="2026-07-23" groups=2 (items keep *(scope)* + PR links)
+4. errors.Is(err, ErrNoVersions) = true
+```
+
+Every R6 contract point holds against the released module. **v1.1.0 is
+sufficient — feature 1 is unblocked** (pin bump v1.0.0 → v1.1.0 via the INV-0001
+procedure, add the R6 clause, then the fetch + endpoint work).
+
 ## Conclusion
 
 **Answer: Yes — feature 1 is small and the shape is clear.**
@@ -267,6 +318,9 @@ Reviewed; decisions recorded:
   The INV is **Concluded**; the docz-repo work is handed off via the temporary
   design doc at `docs/TEMP-DESIGN-docz-changelog.md` (to be re-created with
   `docz create design` in the docz repo and deleted here).
+- **Upstream shipped and verified (2026-08-03):** docz v1.1.0 implements the
+  handoff as its DESIGN-0010 — source-reviewed and probe-verified in F6; the
+  temporary design doc is deleted. Feature 1 is unblocked.
 
 ### Proposed phasing
 
@@ -337,3 +391,7 @@ Reviewed; decisions recorded:
   `changelog_md`/`changelog_sha` columns ("NOT parsed")
 - `cliff.toml` + `CHANGELOG.md` — the fleet-standard git-cliff shape
 - `.docz.yaml` (this branch) — the proposed `changelog:` block, live example
+- docz v1.1.0 (released 2026-08-03) — ships the surface as docz DESIGN-0010:
+  `pkg/doczcore/config` `ChangelogConfig` + `pkg/doczcore/document`
+  `ParseChangelog`/`ErrNoVersions`
+  (<https://github.com/donaldgifford/docz/releases/tag/v1.1.0>)
