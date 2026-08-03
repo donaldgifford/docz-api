@@ -1,7 +1,7 @@
 ---
 id: IMPL-0005
 title: "Changelog endpoint: pin docz v1.1.0, config-driven fetch, raw serve"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-08-03
 ---
@@ -10,20 +10,29 @@ created: 2026-08-03
 
 # IMPL 0005: Changelog endpoint: pin docz v1.1.0, config-driven fetch, raw serve
 
-**Status:** Draft **Author:** Donald Gifford **Date:** 2026-08-03
+**Status:** In Progress **Author:** Donald Gifford **Date:** 2026-08-03
 
 <!--toc:start-->
-
 - [Objective](#objective)
 - [Scope](#scope)
   - [In Scope](#in-scope)
   - [Out of Scope](#out-of-scope)
 - [Implementation Phases](#implementation-phases)
   - [Phase 1: docz pin bump + contract clause R6](#phase-1-docz-pin-bump--contract-clause-r6)
+    - [Tasks](#tasks)
+    - [Success Criteria](#success-criteria)
   - [Phase 2: Persistence — the resolved changelog path on the repo row](#phase-2-persistence--the-resolved-changelog-path-on-the-repo-row)
+    - [Tasks](#tasks-1)
+    - [Success Criteria](#success-criteria-1)
   - [Phase 3: Fetch, ingest, and the webhook trigger](#phase-3-fetch-ingest-and-the-webhook-trigger)
+    - [Tasks](#tasks-2)
+    - [Success Criteria](#success-criteria-2)
   - [Phase 4: Endpoint and contract — handler, spec 1.2.0](#phase-4-endpoint-and-contract--handler-spec-120)
+    - [Tasks](#tasks-3)
+    - [Success Criteria](#success-criteria-3)
   - [Phase 5: End-to-end proof and close-out](#phase-5-end-to-end-proof-and-close-out)
+    - [Tasks](#tasks-4)
+    - [Success Criteria](#success-criteria-4)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -339,6 +348,13 @@ The serve slice, a near-verbatim mirror of `getRepoIndex`.
 Numbered for review; `a` is the recommendation. Reply with a letter per
 question, or "other: …".
 
+**All answered `a` (2026-08-03).** OQ-1a comes with a design note from review:
+the persisted-path-on-the-repo-row shape is expected to become a **more generic
+consumed-files pattern later** (other non-doc files served by the API). Keep the
+implementation simple but not corner-painting: one plain column now, no bespoke
+abstractions that would fight a future `tracked files` generalization — and no
+premature generalization either.
+
 1. **Webhook staleness — how does a changelog-only push trigger re-ingest?** The
    changelog lives outside `docs_dir` (unlike `index.md`), so today's
    `shouldIngest` would never refresh it — and the release flow's changelog-sync
@@ -347,7 +363,8 @@ question, or "other: …".
    - **a. Persist the resolved path as `repos.changelog_file`** (NULL when
      disabled) and match it in `shouldIngest` — the `DocsDir`-on-the-row
      precedent; exact per-repo correctness, one tiny migration, zero parse work
-     in the webhook. _(Recommended; Phases 2–3 assume it.)_
+     in the webhook. _(Recommended; Phases 2–3 assume it.)_ **Answered: (a)** —
+     with the generic-pattern design note above.
    - b. Hint-parse the cached `config_snapshot` inside the webhook per push — no
      migration, but duplicates the hint helper outside `githubapp` and re-parses
      yaml on every push event.
@@ -363,14 +380,14 @@ question, or "other: …".
      partial-ingest special case.)_
    - b. Catch changelog validation specifically: warn, ingest docs without a
      changelog. Softer, but adds a bespoke partial-failure mode for a config the
-     owner explicitly opted into.
+     owner explicitly opted into. **Answered: (a).**
 
 3. **Dogfood — keep `changelog.enabled: true` in this repo's `.docz.yaml`?** It
    is already committed on this branch (the INV's live example).
    - **a. Keep it** — docz-api serves its own changelog after deploy +
      re-ingest; the fleet's first consumer is ourselves. _(Recommended.)_
    - b. Revert to disabled until the docz-site renders it, then enable
-     fleet-wide in one pass.
+     fleet-wide in one pass. **Answered: (a).**
 
 4. **PR shape — one vertical slice or split?**
    - **a. One PR off this branch** (INV + IMPL + all five phases): no
@@ -379,7 +396,7 @@ question, or "other: …".
      needs it in the same review. _(Recommended.)_
    - b. Two PRs — pin bump + R6 first, feature second. Smaller reviews, but
      `main` briefly pins v1.1.0 with a dormant surface and the second PR carries
-     a cross-PR dependency.
+     a cross-PR dependency. **Answered: (a).**
 
 ## References
 
