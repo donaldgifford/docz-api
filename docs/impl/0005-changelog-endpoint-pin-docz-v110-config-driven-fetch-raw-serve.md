@@ -153,26 +153,26 @@ else is stored.
 
 #### Tasks
 
-- [ ] Goose migration
+- [x] Goose migration
       `internal/store/migrations/20260803000000_add_repo_changelog_file.sql`:
       `ALTER TABLE repos ADD COLUMN changelog_file TEXT` (+ mirrored
       `-- +goose Down` drop), comment matching the cached-pair style. Covered by
       the existing `TestMigrateUpDownRoundTrip` (it walks all migrations up →
       down-to-zero → up).
-- [ ] Add the column to `UpsertRepo` (`internal/store/queries/repos.sql`, INSERT
+- [x] Add the column to `UpsertRepo` (`internal/store/queries/repos.sql`, INSERT
       list + `DO UPDATE SET`); `just generate`; `just generate-check` clean.
       Reads pick it up via `SELECT *` — no new queries.
-- [ ] Grow `store.RepoInput` with `ChangelogFile string`, mapped in
+- [x] Grow `store.RepoInput` with `ChangelogFile string`, mapped in
       `reconcile.go` with `textOrNull` beside the cached pair. Document the
       OQ-3a consequence on `RepoInput`: a disabled block ⇒ empty
       `ChangelogFile`/`ChangelogMD`/`ChangelogSHA` ⇒ all three columns **null on
       the next reconcile** (pure desired state; presence keys off
       `changelog_sha`, mirroring the `index_sha` gotcha).
-- [ ] Store integration tests (`//go:build integration`): reconcile with the
+- [x] Store integration tests (`//go:build integration`): reconcile with the
       triple persists all three; a follow-up reconcile without them nulls all
       three; empty-body-with-valid-sha keeps the sha (empty changelog file ⇒
       200 + `""` later).
-- [ ] `just test` / `just lint` / `just fmt` green; commit
+- [x] `just test` / `just lint` / `just fmt` green; commit
       (`feat(store): persist the resolved changelog path on the repo row`).
 
 #### Success Criteria
@@ -182,6 +182,15 @@ else is stored.
 - `ReconcileRepo` round-trips set → clear for the changelog triple under
   integration tests.
 - No fetch/serve behavior change yet; all existing tests green untouched.
+
+**Status: COMPLETE ✅** — `20260803000000_add_repo_changelog_file.sql` adds
+`repos.changelog_file` (+ down); `UpsertRepo` carries it as `$10` with an
+`EXCLUDED` update and `generate-check` is clean; `RepoInput.ChangelogFile` maps
+through `textOrNull` with the opt-in-desired-state rule documented on the
+struct. `TestReconcileRepoChangelogTriple` proves set (subpath) →
+empty-body-with-valid-sha → all-three-cleared against real Postgres, with
+`TestMigrateUpDownRoundTrip` + `TestReconcileRepoIndexPair` still green.
+`just test` / `just lint` (0 issues) green.
 
 ---
 
