@@ -5,6 +5,13 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 ## [unreleased]
 
+### Features
+
+- *(doczcontract)* Pin docz v1.1.0 + freeze changelog surface (R6)
+- *(store)* Persist the resolved changelog path on the repo row
+- *(ingest)* Config-driven changelog fetch + webhook trigger
+- *(httpapi)* Serve the repo changelog (spec 1.2.0)
+
 ### Bug Fixes
 
 - *(chart)* Scope the main Service selector to the API pods (0.2.2) ([#12](https://github.com/donaldgifford/docz-api/issues/12))
@@ -16,6 +23,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(inv)* Conclude INV-0005 (all OQs=a) + portable docz design handoff
 - *(inv)* Verify docz v1.1.0 ships the changelog surface (F6)
 - *(impl)* IMPL-0005 plan for the changelog endpoint
+- *(impl)* IMPL-0005 OQs answered (all a) — In Progress
+
+### Testing
+
+- *(e2e)* Prove the changelog endpoint end to end; close IMPL-0005
 
 ### Miscellaneous Tasks
 
