@@ -106,8 +106,9 @@ this app for site login (see below).
 
 Subscribe to:
 
-- **Push** — a push to the repo's default branch that touches `.docz.yaml` or
-  anything under `docs_dir/` triggers a full re-ingest (debounced; content-hash
+- **Push** — a push to the repo's default branch that touches `.docz.yaml`,
+  anything under `docs_dir/`, or the repo's configured changelog file (when the
+  `changelog:` block is enabled) triggers a full re-ingest (debounced; content-hash
   gated, so unchanged docs are no-ops). Pushes to other branches or unrelated
   paths are ignored.
 - **Release** — received and logged only today; reserved for the future versions
@@ -234,6 +235,18 @@ tenant (same OIDC code path); see
   (or `.docz.yaml`) re-ingests them — or run a manual
   `docz-api -onboard owner/name@installationID` per repo. No migration or
   backfill job is required; the docz-site's metadata fallback covers the gap.
+- **Changelog opt-in (IMPL-0005):** the
+  `/api/v1/repos/{owner}/{name}/changelog` endpoint serves the changelog cached
+  at each repo's **last ingest**, and it is opt-in per repo — the repo's
+  `.docz.yaml` must enable the `changelog:` block (`file` defaults to
+  `CHANGELOG.md`; a subpath such as `charts/<name>/CHANGELOG.md` is supported).
+  Repos that never enable it return 404, and any changelog cached before this
+  feature shipped is **cleared** on their next ingest, since the block is
+  desired state rather than a sticky cache. Nothing served that data before, so
+  no consumer regresses. Opting in takes effect on the next re-ingest: a
+  default-branch push touching `.docz.yaml`, `docs_dir/`, or the configured
+  changelog file, or a manual
+  `docz-api -onboard owner/name@installationID`.
 - The images pin major/minor tags (`postgres:17-alpine`, `redis:7.4-alpine`,
   `getmeili/meilisearch:v1.12`); Renovate PRs updates.
 - For Kubernetes, translate this to a Deployment (service) plus StatefulSets or

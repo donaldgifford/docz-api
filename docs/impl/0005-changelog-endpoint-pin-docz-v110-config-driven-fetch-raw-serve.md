@@ -1,7 +1,7 @@
 ---
 id: IMPL-0005
 title: "Changelog endpoint: pin docz v1.1.0, config-driven fetch, raw serve"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-08-03
 ---
@@ -10,10 +10,9 @@ created: 2026-08-03
 
 # IMPL 0005: Changelog endpoint: pin docz v1.1.0, config-driven fetch, raw serve
 
-**Status:** In Progress **Author:** Donald Gifford **Date:** 2026-08-03
+**Status:** Completed **Author:** Donald Gifford **Date:** 2026-08-03
 
 <!--toc:start-->
-
 - [Objective](#objective)
 - [Scope](#scope)
   - [In Scope](#in-scope)
@@ -313,26 +312,26 @@ bytes. `api/README.md` records the 1.2.0 signal. All 14 packages green;
 
 #### Tasks
 
-- [ ] e2e integration test (`internal/e2e`, real Postgres):
+- [x] e2e integration test (`internal/e2e`, real Postgres):
       `TestE2ERepoChangelogServeAndDisable` mirroring
       `TestE2ERepoIndexServeAndRemoval` — onboard with the fake fetcher carrying
       a changelog (enabled) → `GET .../changelog` 200 with body + sha →
       re-onboard with the block disabled at HEAD → triple nulled → 404.
-- [ ] Rollout note (`deploy/README.md`, beside the index.md note): natural
+- [x] Rollout note (`deploy/README.md`, beside the index.md note): natural
       refresh only — repos serve their changelog after their **next ingest with
       `changelog.enabled: true`**; pre-existing cached copies from the
       pre-config era are **nulled** on the next reconcile of repos that never
       enable the block (OQ-3a; nothing served them, so nothing user-visible
       regresses).
-- [ ] Update **CLAUDE.md**: pin note v1.1.0 + R6; the new IMPL-0005 section
+- [x] Update **CLAUDE.md**: pin note v1.1.0 + R6; the new IMPL-0005 section
       (conventions: hint parse, strict-null semantics, `changelog_file` column,
       webhook trigger, spec 1.2.0).
-- [ ] Dogfood check (per OQ-3a of this doc): this repo's `.docz.yaml` already
+- [x] Dogfood check (per OQ-3a of this doc): this repo's `.docz.yaml` already
       carries `changelog: {enabled: true, file: CHANGELOG.md}` — leave it; once
       deployed and re-ingested, docz-api serves its own changelog.
-- [ ] `docz update` (index tables); check this plan's boxes as phases land; flip
+- [x] `docz update` (index tables); check this plan's boxes as phases land; flip
       IMPL-0005 → In Progress → Completed at the appropriate commits.
-- [ ] Final gates: `just test`, `just test-integration` (Docker), `just lint`,
+- [x] Final gates: `just test`, `just test-integration` (Docker), `just lint`,
       `just lint-openapi`, `just fmt`, changelog sync commit; hand the branch to
       review/PR.
 
@@ -345,6 +344,17 @@ bytes. `api/README.md` records the 1.2.0 signal. All 14 packages green;
   implementation as one reviewable unit.
 - Docs (CLAUDE.md, deploy, api/README, docz indexes) reflect the shipped
   behavior.
+
+**Status: COMPLETE ✅** — `TestE2ERepoChangelogServeAndDisable` proves ingest →
+serve → disable-at-HEAD → 404 against real Postgres. Full local gates green:
+`just test` (14 pkgs), `just test-integration` (16 pkgs, 0 FAIL), `just lint` (0
+issues), `just lint-openapi` (vacuum 100/100), `just fmt`. Rollout +
+webhook-trigger notes in `deploy/README.md`, conventions in CLAUDE.md, the 1.2.0
+signal in `api/README.md`, docz indexes refreshed. This repo keeps
+`changelog: enabled: true` (dogfood, OQ-3a).
+
+**IMPL-0005 is COMPLETE** — all five phases done; the branch is one reviewable
+vertical slice (OQ-4a).
 
 ## File Changes
 
