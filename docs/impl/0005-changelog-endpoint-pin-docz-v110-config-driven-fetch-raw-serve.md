@@ -267,26 +267,26 @@ The serve slice, a near-verbatim mirror of `getRepoIndex`.
 
 #### Tasks
 
-- [ ] `internal/httpapi/dto.go`: `repoChangelogDTO` — `repo` (`owner/name`
+- [x] `internal/httpapi/dto.go`: `repoChangelogDTO` — `repo` (`owner/name`
       label), `changelog_md`, `changelog_sha` (`nullText` mapping, empty strings
       never `null`) + `toRepoChangelog`.
-- [ ] `internal/httpapi/handlers.go`: `getRepoChangelog` — `resolveRepo`
+- [x] `internal/httpapi/handlers.go`: `getRepoChangelog` — `resolveRepo`
       (existence hiding) → gate on `repo.ChangelogSha.Valid` → 404
       `{"error":"changelog not found"}` or 200 DTO. Route
       `r.Get("/changelog", …)` beside `/index` in `Mount`.
-- [ ] httpapi unit tests: 200 envelope (body + sha), empty-file 200 + `""` body
+- [x] httpapi unit tests: 200 envelope (body + sha), empty-file 200 + `""` body
       (valid sha, NULL body), 404 when sha NULL, 404 existence-hiding for a repo
       outside the allowed set.
-- [ ] Spec (`api/openapi.yaml`): path `/api/v1/repos/{owner}/{name}/changelog`,
+- [x] Spec (`api/openapi.yaml`): path `/api/v1/repos/{owner}/{name}/changelog`,
       `operationId:     getRepoChangelog`, tag `repos`, `RepoChangelog` schema
       (`additionalProperties: false`, all three fields required), 404 →
       `ErrorResponse`; **`info.version: 1.1.0 → 1.2.0`** (additive minor,
       INV-0005 OQ-6a). `just lint-openapi` (vacuum 100/100 + yamlfmt) clean.
-- [ ] Contract test (`openapi_contract_test.go`): seed the primary fixture repo
+- [x] Contract test (`openapi_contract_test.go`): seed the primary fixture repo
       with a changelog pair; round-trip the 200; the bare fixture repo
       (`acme/bare`) proves the 404 — the exact `getRepoIndex` pattern. Update
       `api/README.md` (consumer guide: new op + version note).
-- [ ] `just test` / `just lint` / `just fmt` / `just lint-openapi` green; commit
+- [x] `just test` / `just lint` / `just fmt` / `just lint-openapi` green; commit
       (`feat(httpapi): serve the repo changelog (spec 1.2.0)`).
 
 #### Success Criteria
@@ -296,6 +296,16 @@ The serve slice, a near-verbatim mirror of `getRepoIndex`.
   `additionalProperties: false` as the drift gate.
 - Spec scores 100/100 under vacuum; `info.version` is `1.2.0`.
 - All prior wire shapes byte-identical (existing contract cases untouched).
+
+**Status: COMPLETE ✅** — `repoChangelogDTO` + `toRepoChangelog` mirror the
+index pair; `getRepoChangelog` gates on `ChangelogSha.Valid` behind
+`resolveRepo` (existence hiding) and is routed at `/changelog`. Spec is `1.2.0`
+with the `getRepoChangelog` op + strict `RepoChangelog` schema, vacuum
+**100/100**. `TestGetRepoChangelog` covers 200 / empty-200 / 404 / unknown-repo,
+`TestGetRepoChangelogUnauthorizedIs404` the hidden 404, and the contract test
+round-trips `getRepoChangelog` + `getRepoChangelogMissing` against the served
+bytes. `api/README.md` records the 1.2.0 signal. All 14 packages green;
+`just lint` 0 issues.
 
 ---
 
