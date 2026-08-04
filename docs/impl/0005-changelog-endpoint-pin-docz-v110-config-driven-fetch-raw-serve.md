@@ -204,38 +204,38 @@ next reconcile — invisible today since nothing serves it yet.
 
 #### Tasks
 
-- [ ] `internal/githubapp`: add
+- [x] `internal/githubapp`: add
       `changelogHint(configYAML) (enabled bool,     file string)` — fetch-scoped
       one-field `yaml.Unmarshal` of the `changelog:` block, defaults from
       `doczcfg.DefaultConfig().Changelog` / `doczcfg.DefaultChangelogFile`
       (mirrors `docsDirHint`: hint at fetch, authoritative parse stays in
       ingest's `loadConfig`).
-- [ ] Rework `Client.Fetch`: drop the hardcoded changelog branch from
+- [x] Rework `Client.Fetch`: drop the hardcoded changelog branch from
       `classifyTree` (signature loses `changelogSHA`); after `ConfigYAML` is
       fetched, when the hint says enabled → `findBlobSHA(tree, file)` → fetch
       that blob into `snap.ChangelogMD`/`ChangelogSHA` (at most one extra blob
       request, zero when disabled/absent — the `index.md` pattern exactly).
       Subpaths (`charts/<name>/CHANGELOG.md`) work by construction since
       `findBlobSHA` is exact-path.
-- [ ] `internal/ingest/service.go`: map
+- [x] `internal/ingest/service.go`: map
       `RepoInput.ChangelogFile = cfg.Changelog.File` when
       `cfg.Changelog.Enabled`, else `""` — from the **authoritative**
       post-`Load` config (normalized), not the hint. Per OQ-2a, an invalid
       `changelog.file` fails `Validate` and therefore the whole ingest,
       identical to any other malformed `.docz.yaml`.
-- [ ] `internal/webhook`: extend `shouldIngest(ev, docsDir, changelogFile)` —
+- [x] `internal/webhook`: extend `shouldIngest(ev, docsDir, changelogFile)` —
       also match a changed path equal to the repo row's resolved
       `changelog_file` (when non-NULL). `handlePush` already holds the full repo
       row (`SELECT *`), so this is one param + one comparison; a `.docz.yaml`
       push already re-ingests, keeping the stored path fresh.
-- [ ] Tests: `githubapp` stub-RoundTripper fixtures — enabled root file, enabled
+- [x] Tests: `githubapp` stub-RoundTripper fixtures — enabled root file, enabled
       subpath (`charts/x/CHANGELOG.md`), disabled block (no blob request —
       assert request count), absent block (default-off), enabled but file
       missing from tree (empty snapshot fields, no error); `changelogHint` table
       (absent/partial/full/malformed yaml → default-off); ingest unit test
       mapping enabled/disabled → `ChangelogFile` set/empty; webhook
       `shouldIngest` table gains changelog-path hit/miss/NULL cases.
-- [ ] `just test` / `just lint` / `just fmt` green; commit
+- [x] `just test` / `just lint` / `just fmt` green; commit
       (`feat(ingest): config-driven changelog fetch + webhook trigger`).
 
 #### Success Criteria
@@ -246,6 +246,18 @@ next reconcile — invisible today since nothing serves it yet.
 - A push touching **only** the changelog file on the default branch enqueues a
   re-ingest; one touching neither it, `.docz.yaml`, nor `docs_dir/` does not.
 - The five-endpoint read surface is still untouched (endpoint lands next phase).
+
+**Status: COMPLETE ✅** — `changelogHint` mirrors `docsDirHint` (fetch-scoped,
+docz defaults, `./` normalization); `Fetch` resolves the configured path via
+`findBlobSHA` and `classifyTree` no longer recognizes `CHANGELOG.md` at all;
+`ingest.changelogFile` maps the authoritative post-`Load` value (empty when
+dormant); `shouldIngest` gained the exact-path changelog match.
+`TestFetchRepoChangelog` covers enabled-root / enabled-subpath / disabled /
+absent-block / configured-file-missing (the no-fetch cases prove it by
+withholding the blob — the stub 404s on an unfetched sha), `TestChangelogHint`
+
+- `TestRunMapsChangelogFile` table the parse and mapping, and `TestShouldIngest`
+  gained five changelog cases. All 14 packages green; `just lint` 0 issues.
 
 ---
 
