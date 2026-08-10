@@ -17,6 +17,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(chart)* Scope the main Service selector to the API pods (0.2.2) ([#12](https://github.com/donaldgifford/docz-api/issues/12))
 - *(deps)* Bump opentelemetry to v1.44.0 for GO-2026-5158
+- *(deps)* Bump kin-openapi to v0.144.0 for GHSA-r277-6w6q-xmqw
 
 ### Documentation
 
