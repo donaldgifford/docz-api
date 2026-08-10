@@ -5,9 +5,13 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 ## [unreleased]
 
+### Documentation
+
+- *(inv)* INV-0006 cosign v3 vs our SLSA provenance attestations
+
 ### Miscellaneous Tasks
 
-- *(chart)* Point appVersion at v0.5.0 (chart 0.3.1)
+- *(chart)* Point appVersion at v0.5.0 (chart 0.3.1) ([#15](https://github.com/donaldgifford/docz-api/issues/15))
 
 ## [0.5.0] - 2026-08-10
 
