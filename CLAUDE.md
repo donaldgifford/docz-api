@@ -809,9 +809,30 @@ established as the build progresses:
     `http` containerPort (no metrics port); distroless `runAsUser: 65532`.
   - **`secret.yaml` carries five keys** (app-id, webhook-secret, private-key,
     session-secret, oauth-client-secret); `existingSecret` bypass must supply all
-    five. **`service.yaml` is one `http` port** (`service.port` → targetPort
-    `http`). **`Chart.yaml` `appVersion: "v0.4.0"`** (latest release tag; drives
-    the default image tag), chart `version: 0.1.0`.
+    five. (Superseded in chart 0.3.0 — the provider client-secret keys are now
+    conditional; see the login-provider bullet below.) **`service.yaml` is one
+    `http` port** (`service.port` → targetPort `http`). **`Chart.yaml`
+    `appVersion: "v0.4.0"`** (latest release tag; drives the default image tag),
+    chart `version: 0.1.0`.
+    - **Login providers are gated per-provider** (chart ≥ 0.3.0).
+      `config.authProviders` is parsed once by the **`docz-api.authProviders`**
+      helper (comma-split, whitespace-stripped, `compact`, `toJson`) and consumed
+      as `include "docz-api.authProviders" . | fromJsonArray` → `has "okta" $providers`.
+      Each enabled provider gates **both** its Deployment env block
+      (`GITHUB_OAUTH_*` / `OKTA_*` / `KEYCLOAK_*`) **and** its Secret key
+      (`oauth-client-secret` / `okta-client-secret` / `keycloak-client-secret`),
+      so a github-only install renders neither `OKTA_*` env nor an okta key —
+      and an okta-only install no longer demands a dummy GitHub OAuth secret.
+      Issuer/client-id are plain `config.*` values (non-secret, mirroring
+      `githubOAuthClientID`); only the client secret is a Secret key. Every
+      enabled provider's fields are `required` at **render** time (house style,
+      like `authRedirectBase`), so a missing issuer fails `helm install` instead
+      of crash-looping — which is why the three deployment-rendering
+      helm-unittest suites must set `config.githubOAuthClientID` at suite level.
+      **`secrets.existingSecret` is the secret-manager seam** (1Password
+      Operator / External Secrets / sealed-secrets): the chart references the
+      Secret by key only, so there is deliberately **no ESO/ExternalSecret
+      template** in the chart.
     - **GOTCHA — the main Service must scope on `app.kubernetes.io/component:
       server`** (chart ≥ 0.2.2). The baked postgres/valkey/meilisearch pods
       carry the **same** `docz-api.selectorLabels` (name+instance) AND expose an

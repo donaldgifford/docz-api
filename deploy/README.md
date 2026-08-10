@@ -172,8 +172,14 @@ credentials in separate blast radii. The service requests the `read:user` and
 
 ### Enabling Okta (OIDC)
 
-Okta is a first-class login provider alongside GitHub. Add `okta` to
-`AUTH_PROVIDERS` and set the three `OKTA_*` variables:
+Okta is a first-class login provider alongside GitHub. In Okta, create the app
+as **Applications → Create App Integration → OIDC - OpenID Connect → Web
+Application**, grant type _Authorization Code_. It must be that type: the
+service holds a client secret and exchanges the code server-side, so it is a
+**confidential client**. A Single-Page Application or Native app is a public
+client with no secret and cannot complete the exchange.
+
+Then add `okta` to `AUTH_PROVIDERS` and set the three `OKTA_*` variables:
 
 ```sh
 AUTH_PROVIDERS=github,okta            # or just okta
@@ -206,6 +212,14 @@ Okta-specific things to get right:
    include `<AUTH_REDIRECT_BASE>/auth/callback` (same value the GitHub flow
    uses). Also confirm the user's email is **verified** in Okta — the service
    drops an email the issuer marks `email_verified:false`.
+
+On Kubernetes the Helm chart wires the same variables from
+`config.authProviders`, `config.oktaIssuer`, `config.oktaClientID` and
+`secrets.oktaClientSecret` (Secret key `okta-client-secret`); only the enabled
+providers' env and Secret keys are rendered. To source the client secret from a
+secret manager, set `secrets.create=false` and point `secrets.existingSecret` at
+a Secret you populate however you like — see
+[the chart README](../charts/docz-api/README.md).
 
 For local development you usually run **Keycloak** instead of a hosted Okta
 tenant (same OIDC code path); see
