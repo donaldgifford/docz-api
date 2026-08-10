@@ -11,6 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(store)* Persist the resolved changelog path on the repo row
 - *(ingest)* Config-driven changelog fetch + webhook trigger
 - *(httpapi)* Serve the repo changelog (spec 1.2.0)
+- *(chart)* Gate login-provider env + secret keys per provider
 
 ### Bug Fixes
 
