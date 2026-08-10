@@ -26,6 +26,8 @@ created: 2026-08-10
   - [F4 — cosign v2 verifies the same artifact with the same command](#f4--cosign-v2-verifies-the-same-artifact-with-the-same-command)
   - [F5 — GHCR does not serve the OCI referrers API](#f5--ghcr-does-not-serve-the-oci-referrers-api)
   - [F6 — Signatures are unaffected](#f6--signatures-are-unaffected)
+  - [F7 — Upstream pins cosign v2 on `main`, and there is no newer generator](#f7--upstream-pins-cosign-v2-on-main-and-there-is-no-newer-generator)
+  - [F8 — cosign v3 offers no way to read the legacy attachment](#f8--cosign-v3-offers-no-way-to-read-the-legacy-attachment)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
 - [Open questions](#open-questions)
@@ -193,6 +195,37 @@ as a fix.
 artifacts are signed and the provenance exists — consumers just cannot verify
 the provenance with the tool version they will install today.
 
+### F7 — Upstream pins cosign v2 on `main`, and there is no newer generator
+
+The obvious fix — "pin and match the newest majors everywhere" — does not
+exist as an option. **Our** cosign is already v3 on both sides (`mise.toml`
+and `ghcr.yml`'s signing step). The v2 is inside the reusable workflow, which
+hardcodes the binary it runs:
+
+```yaml
+# .github/workflows/generator_container_slsa3.yml, at BOTH v2.1.0 and main
+- id: cosign-install
+  uses: sigstore/cosign-installer@… # v3.7.0 (v3.9.1 on main) — the action
+  with:
+    cosign-release: v2.2.3          # ← the cosign binary actually used
+```
+
+Note the installer *action* is v3.x while the `cosign-release` it installs is
+v2.2.3 — easy to misread as "already on v3".
+
+`v2.1.0` (2025-02-24) is the **latest release**; there is nothing newer to bump
+to, and `main` has not moved off cosign v2.2.3 either. So no version bump on
+our side or theirs changes the attachment scheme. This **eliminates** the
+"bump the generator" option that OQ-1 originally listed.
+
+### F8 — cosign v3 offers no way to read the legacy attachment
+
+`cosign verify-attestation --help` on v3.1.1 exposes no
+`--attachment-tag-prefix`, no legacy/bundle-format selector, and no relevant
+env knob (`cosign env` lists only `COSIGN_EXPERIMENTAL` and
+`COSIGN_MAX_ATTACHMENT_SIZE`). There is no v3-only invocation that reaches the
+`.att` tag, which rules out fixing this purely in the documented command.
+
 ## Conclusion
 
 **Answer: the documented command is wrong for current cosign; the provenance
@@ -210,6 +243,11 @@ It is a **documentation and tooling-alignment defect**, not a supply-chain
 defect. Severity is low but it is consumer-visible: an operator following our
 own README concludes our provenance is broken.
 
+It is also **not fixable by pinning**: per F7 the cosign that writes the
+attestation is hardcoded inside the reusable workflow (v2.2.3, on both the
+latest release and `main`), and per F8 cosign v3 has no flag that reaches the
+legacy tag. Aligning majors is not an available move.
+
 ## Recommendation
 
 Fix the README so the documented command works with the cosign a consumer will
@@ -224,23 +262,30 @@ generator pins its own cosign).
 
 **OQ-1 — How do we make the documented verification work?**
 
+Per F7, "bump the generator / match majors" is **not** among the options: the
+generator hardcodes cosign v2.2.3 on both its latest release and `main`, and
+per F8 there is no v3 flag that reaches the legacy tag. What remains:
+
 - **(a) Document the cosign v2 requirement for the provenance command, and
   file an upstream-tracking note.** Add a line to the chart README's SLSA
   section saying the provenance attestation is stored in the legacy attachment
   scheme and requires `cosign v2.x` (with the exact `mise x` invocation from
   F4), leaving the signature command as-is for any version. Smallest change,
-  honest about reality, no pipeline churn. **← recommendation**
-- (b) Bump the SLSA generator to a release whose bundled cosign writes the
-  v3-compatible attachment, so a single modern command verifies both. Correct
-  long-term shape, but gated on the generator shipping it — needs verification
-  that such a release exists before committing to it.
-- (c) Re-attest in `ghcr.yml` after the generator runs: download the
+  honest about reality, no pipeline churn, and it costs nothing to undo when
+  upstream eventually moves. **← recommendation**
+- (b) Re-attest in `ghcr.yml` after the generator runs: download the
   provenance and re-`cosign attest` it with the workflow's own cosign v3 so it
   lands in the new-format attachment. Makes the modern command work now, but
   the re-attestation is signed by `ghcr.yml`, not the generator — it weakens
-  the SLSA identity story and the README regex would have to change anyway.
-- (d) Leave it; drop the provenance command from the README and keep only the
-  signature check.
+  the SLSA identity story (the whole point of the generator is that a trusted
+  builder, not our workflow, vouches for the build) and the README regex would
+  have to change anyway. Also leaves two provenance copies with different
+  signers on one digest.
+- (c) Drop the provenance command from the README, keep only the signature
+  check, and stop claiming SLSA verifiability until the toolchain aligns.
+- (d) Stop using the SLSA generator; emit provenance with cosign v3 directly
+  from `ghcr.yml`. Uniform tooling, but forfeits the SLSA Level 3
+  non-falsifiability property the generator provides.
 
 **OQ-2 — Do we pin cosign in `mise.toml` instead of `latest`?**
 
@@ -248,8 +293,9 @@ generator pins its own cosign).
   checks, not consumer behaviour, and Renovate keeps it current. Pinning to v2
   to make one doc command work would freeze us on an old major. **←
   recommendation**
-- (b) Pin to a v2.x line until OQ-1(b) lands, so `just`-driven local
-  verification matches the documented command.
+- (b) Pin to a v2.x line so `just`-driven local verification matches the
+  documented provenance command. Rejected: it would freeze us on an old major
+  for one doc command, and F7 shows there is no upstream fix to wait for.
 - (c) Pin to a specific v3.x for reproducibility and document the v2 fallback
   separately.
 
