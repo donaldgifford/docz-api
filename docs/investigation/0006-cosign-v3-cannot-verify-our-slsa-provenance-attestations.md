@@ -28,6 +28,8 @@ created: 2026-08-10
   - [F6 — Signatures are unaffected](#f6--signatures-are-unaffected)
   - [F7 — Upstream pins cosign v2 on `main`, and there is no newer generator](#f7--upstream-pins-cosign-v2-on-main-and-there-is-no-newer-generator)
   - [F8 — cosign v3 offers no way to read the legacy attachment](#f8--cosign-v3-offers-no-way-to-read-the-legacy-attachment)
+  - [F9 — No single cosign version can verify both attachments](#f9--no-single-cosign-version-can-verify-both-attachments)
+  - [F10 — Both cosign majors are actively maintained, and `cosign-release` is settable](#f10--both-cosign-majors-are-actively-maintained-and-cosign-release-is-settable)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
 - [Open questions](#open-questions)
@@ -226,6 +228,42 @@ env knob (`cosign env` lists only `COSIGN_EXPERIMENTAL` and
 `COSIGN_MAX_ATTACHMENT_SIZE`). There is no v3-only invocation that reaches the
 `.att` tag, which rules out fixing this purely in the documented command.
 
+### F9 — No single cosign version can verify both attachments
+
+The split cuts **both** ways, which invalidates the first draft's recommendation
+(documenting "use cosign v2" as a complete answer):
+
+| Artifact attachment | cosign v2.6.1 | cosign v3.1.1 |
+|---------------------|---------------|---------------|
+| Signature (written by our v3 `cosign sign`) | **`no signatures found`** | OK |
+| SLSA provenance (written by generator's v2.2.3) | OK | **`no matching attestations`** |
+
+A consumer today needs **two cosign binaries** to check both claims. That is not
+a documentable workflow; it is a defect to fix.
+
+### F10 — Both cosign majors are actively maintained, and `cosign-release` is settable
+
+Correcting an assumption in the first draft ("pinning v2 would freeze us on an
+old major"): sigstore ships **both** lines concurrently — `v2.6.5` and `v3.1.3`
+are both current releases. v2 is not EOL.
+
+And `sigstore/cosign-installer` (we already pin the newest, **v4.1.2**, whose
+default is cosign `v3.0.6`) accepts an explicit `cosign-release` input:
+
+```yaml
+- uses: sigstore/cosign-installer@…   # v4.1.2
+  with:
+    cosign-release: 'v2.2.3'          # or any version we choose
+```
+
+So the cosign major used by **our** signing steps is a one-line decision, in
+`ghcr.yml` (2 call sites) and `ecr.yml` (2 call sites). This is the lever that
+makes "align both halves on one scheme" a real option — the first draft treated
+our side as immovable, which was wrong.
+
+What remains outside our control is only the **generator's** cosign
+(hardcoded `v2.2.3`, per F7).
+
 ## Conclusion
 
 **Answer: the documented command is wrong for current cosign; the provenance
@@ -239,63 +277,70 @@ right digest — in the legacy `.att` tag. cosign **v3** (what `mise.toml`'s
 will install) does not read that tag, so the README's provenance command fails
 for everyone.
 
-It is a **documentation and tooling-alignment defect**, not a supply-chain
-defect. Severity is low but it is consumer-visible: an operator following our
-own README concludes our provenance is broken.
+It is a **tooling-alignment defect**, not a supply-chain defect — but a worse
+one than the first pass concluded. Per F9 the split cuts both ways: cosign v3
+cannot read the provenance and cosign v2 cannot read the signature, so **no
+single cosign version verifies both claims**. "Document the v2 requirement" is
+therefore not a fix; it would tell consumers to install two binaries.
 
-It is also **not fixable by pinning**: per F7 the cosign that writes the
-attestation is hardcoded inside the reusable workflow (v2.2.3, on both the
-latest release and `main`), and per F8 cosign v3 has no flag that reaches the
-legacy tag. Aligning majors is not an available move.
+The fixable variable is **our own** `cosign-release` (F10), not the generator's
+(F7, hardcoded v2.2.3 with no input to override it, on both the latest release
+and `main`). So the decision is which scheme to standardise on, and what we are
+willing to give up to get there.
 
 ## Recommendation
 
-Fix the README so the documented command works with the cosign a consumer will
-actually have, and add a regression check so this cannot silently rot again.
-See OQ-1 for the mechanism and OQ-3 for the check.
+Standardise both halves of the pipeline on one attachment scheme so a single
+cosign verifies both claims, then add a post-publish check that runs the
+documented commands against what we just shipped (OQ-3). See OQ-1 for which
+scheme.
 
-Do **not** republish anything: the existing attestations are valid and
-verifiable, and republishing would not change the attachment scheme (the
-generator pins its own cosign).
+Do **not** republish past versions: their signatures and attestations are each
+individually valid, and republishing would not change the scheme.
 
 ## Open questions
 
-**OQ-1 — How do we make the documented verification work?**
+**OQ-1 — Which attachment scheme do we standardise on?**
 
-Per F7, "bump the generator / match majors" is **not** among the options: the
-generator hardcodes cosign v2.2.3 on both its latest release and `main`, and
-per F8 there is no v3 flag that reaches the legacy tag. What remains:
+Per F9 this is no longer "which command do we document" — no single cosign
+verifies both claims today, so one side has to move. Per F10 the only side we
+control is ours, via `cosign-release` in the four `cosign-installer` call sites
+(`ghcr.yml` ×2, `ecr.yml` ×2).
 
-- **(a) Document the cosign v2 requirement for the provenance command, and
-  file an upstream-tracking note.** Add a line to the chart README's SLSA
-  section saying the provenance attestation is stored in the legacy attachment
-  scheme and requires `cosign v2.x` (with the exact `mise x` invocation from
-  F4), leaving the signature command as-is for any version. Smallest change,
-  honest about reality, no pipeline churn, and it costs nothing to undo when
-  upstream eventually moves. **← recommendation**
-- (b) Re-attest in `ghcr.yml` after the generator runs: download the
-  provenance and re-`cosign attest` it with the workflow's own cosign v3 so it
-  lands in the new-format attachment. Makes the modern command work now, but
-  the re-attestation is signed by `ghcr.yml`, not the generator — it weakens
-  the SLSA identity story (the whole point of the generator is that a trusted
-  builder, not our workflow, vouches for the build) and the README regex would
-  have to change anyway. Also leaves two provenance copies with different
-  signers on one digest.
-- (c) Drop the provenance command from the README, keep only the signature
-  check, and stop claiming SLSA verifiability until the toolchain aligns.
-- (d) Stop using the SLSA generator; emit provenance with cosign v3 directly
-  from `ghcr.yml`. Uniform tooling, but forfeits the SLSA Level 3
-  non-falsifiability property the generator provides.
+- **(a) Align down: pin our `cosign-release` to `v2.2.3`, matching the
+  generator.** Both signature and provenance then live in the legacy scheme and
+  a single cosign v2 command verifies both — the README's existing commands
+  start working as written, unchanged. v2.6.x is actively maintained (F10), so
+  this is not an EOL corner. Cost: consumers on cosign v3 (the installer
+  default) cannot verify us, so the README must state the v2 requirement.
+  Smallest change, restores a coherent story today, trivially reversible when
+  upstream moves. **← recommendation**
+- (b) Align up: stop using the SLSA reusable generator and produce provenance
+  ourselves with our own cosign v3 (`cosign attest`). Everything lands in the
+  modern scheme and verifies with the cosign consumers actually install. Cost:
+  forfeits the SLSA Level 3 non-falsifiability property — provenance would be
+  signed by `ghcr.yml`, i.e. by the same workflow that builds the artifact,
+  which is precisely what a trusted builder exists to avoid.
+- (c) Keep both schemes and document two binaries (v3 for the signature, v2 for
+  the provenance). Honest, zero pipeline change, but a bad consumer experience
+  and an easy thing to get wrong.
+- (d) Keep the signature, drop the SLSA provenance job and its README claim
+  until upstream ships a v3-writing generator.
+
+Whichever is chosen, the README's "Both are signed with cosign keyless and ship
+SLSA Level 3 provenance attestations" line needs to state the cosign version
+the reader must use.
 
 **OQ-2 — Do we pin cosign in `mise.toml` instead of `latest`?**
 
-- **(a) Leave `cosign = "latest"`.** The local pin drives signing and ad-hoc
+- **(a) Leave `cosign = "latest"`.** (Weakened by F9/F10 — see (b).) The local pin drives signing and ad-hoc
   checks, not consumer behaviour, and Renovate keeps it current. Pinning to v2
   to make one doc command work would freeze us on an old major. **←
   recommendation**
-- (b) Pin to a v2.x line so `just`-driven local verification matches the
-  documented provenance command. Rejected: it would freeze us on an old major
-  for one doc command, and F7 shows there is no upstream fix to wait for.
+- (b) Pin to whatever major OQ-1 settles on, so local `cosign` matches what CI
+  writes and what the README tells consumers to run. If OQ-1(a) wins this is
+  the more consistent choice — `latest` would leave the local binary unable to
+  verify our own artifacts.
 - (c) Pin to a specific v3.x for reproducibility and document the v2 fallback
   separately.
 
