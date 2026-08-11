@@ -31,6 +31,7 @@ created: 2026-08-10
   - [F9 — No single cosign version can verify both attachments](#f9--no-single-cosign-version-can-verify-both-attachments)
   - [F10 — Both cosign majors are actively maintained, and `cosign-release` is settable](#f10--both-cosign-majors-are-actively-maintained-and-cosign-release-is-settable)
 - [Conclusion](#conclusion)
+- [Decision](#decision)
 - [Recommendation](#recommendation)
 - [Open questions](#open-questions)
 - [References](#references)
@@ -301,6 +302,24 @@ without the swap reproduces the same split.
 
 Do **not** retro-fix past versions: their signatures and attestations are each
 individually valid; they simply need the right cosign major to check each one.
+
+## Decision
+
+**OQ-1 = (a)**, **OQ-4 = (a)** (chart + image together), decided 2026-08-11.
+`slsa-github-generator` is replaced by `actions/attest-build-provenance@v4.2.2`
+in both `ghcr.yml` and `ecr.yml`, run as a step inside the existing publish
+jobs. The SLSA **Build L2** wording is accepted and the docs now say so rather
+than claiming L3.
+
+**OQ-2 = (a)** — `mise.toml` stays `cosign = "latest"`; with the generator gone
+everything we publish is written by current cosign, so `latest` is now the
+consistent choice rather than the awkward one.
+
+**OQ-3 remains open** — no post-publish self-verification step was added with
+this change. It is still the thing that would have caught this originally.
+
+Takes effect from **chart 0.3.2 / image v0.5.1**; earlier artifacts keep the
+split and remain verifiable with `cosign v2.x` or `gh attestation verify`.
 
 ## Open questions
 
