@@ -9,6 +9,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(inv)* INV-0006 cosign v3 vs our SLSA provenance attestations
 - *(inv)* INV-0006 — pinning cannot fix it (F7, F8)
+- *(inv)* INV-0006 — correct the analysis (F9, F10)
 
 ### Miscellaneous Tasks
 
