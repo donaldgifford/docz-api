@@ -290,46 +290,63 @@ willing to give up to get there.
 
 ## Recommendation
 
-Standardise both halves of the pipeline on one attachment scheme so a single
-cosign verifies both claims, then add a post-publish check that runs the
-documented commands against what we just shipped (OQ-3). See OQ-1 for which
-scheme.
+Get the whole pipeline onto current cosign by replacing the reusable SLSA
+generator with `actions/attest-build-provenance` (OQ-1a), then add a
+post-publish check that runs the documented commands against what was just
+shipped (OQ-3) so this cannot silently rot again.
 
-Do **not** republish past versions: their signatures and attestations are each
-individually valid, and republishing would not change the scheme.
+Version bumps alone cannot achieve this: everything we control is already on
+the newest v3, and the v2 lives inside upstream's workflow. Re-releasing
+without the swap reproduces the same split.
+
+Do **not** retro-fix past versions: their signatures and attestations are each
+individually valid; they simply need the right cosign major to check each one.
 
 ## Open questions
 
-**OQ-1 — Which attachment scheme do we standardise on?**
+**OQ-1 — How do we get the whole pipeline onto current cosign?**
 
-Per F9 this is no longer "which command do we document" — no single cosign
-verifies both claims today, so one side has to move. Per F10 the only side we
-control is ours, via `cosign-release` in the four `cosign-installer` call sites
-(`ghcr.yml` ×2, `ecr.yml` ×2).
+Stated goal: one cosign major — the newest v3 line — across `mise.toml`, CI
+actions, and everything we publish, cutting fresh artifacts if needed.
 
-- **(a) Align down: pin our `cosign-release` to `v2.2.3`, matching the
-  generator.** Both signature and provenance then live in the legacy scheme and
-  a single cosign v2 command verifies both — the README's existing commands
-  start working as written, unchanged. v2.6.x is actively maintained (F10), so
-  this is not an EOL corner. Cost: consumers on cosign v3 (the installer
-  default) cannot verify us, so the README must state the v2 requirement.
-  Smallest change, restores a coherent story today, trivially reversible when
-  upstream moves. **← recommendation**
-- (b) Align up: stop using the SLSA reusable generator and produce provenance
-  ourselves with our own cosign v3 (`cosign attest`). Everything lands in the
-  modern scheme and verifies with the cosign consumers actually install. Cost:
-  forfeits the SLSA Level 3 non-falsifiability property — provenance would be
-  signed by `ghcr.yml`, i.e. by the same workflow that builds the artifact,
-  which is precisely what a trusted builder exists to avoid.
+Important framing: **we are already there for everything we control.**
+`mise.toml` resolves cosign `v3.1.1`; all four `cosign-installer` pins are the
+newest `v4.1.2`, whose default is cosign `v3.0.6`. There is no version left to
+bump, and **re-releasing changes nothing** — a fresh chart/image would
+reproduce the identical split, because the `v2.2.3` is executed inside
+`generator_container_slsa3.yml`, which hardcodes it (F7) and exposes no input
+to override it. Upstream is not moving either: their only open cosign work is
+a Renovate PR *within* the v2 line (v2.6.2).
+
+So uniform-v3 is reachable only by taking the reusable generator out of the
+pipeline.
+
+- **(a) Replace the SLSA generator with `actions/attest-build-provenance`.**
+  GitHub's native provenance action, `v4.2.2` (2026-08-06), actively
+  maintained on current sigstore tooling. It is a drop-in for our two
+  provenance jobs: it takes `subject-name` + `subject-digest` (which the chart
+  and image jobs already output) and `push-to-registry: true`. Result: every
+  signature and attestation we publish is written by current tooling, one
+  cosign v3 verifies both, and `gh attestation verify` works too. Requires
+  cutting a new chart/image to take effect — previously published artifacts
+  keep their split and stay individually valid. **← recommendation**
+  - **Caveat to accept knowingly:** provenance would be signed by *our*
+    repository's Actions identity rather than a separate trusted-builder
+    reusable workflow. GitHub's build attestations are SLSA v1 **Build L2**;
+    the reusable generator's pitch was L3 non-falsifiability. The chart
+    README's "ship SLSA Level 3 provenance attestations" line must be
+    corrected to match — the honest trade is *current, verifiable tooling* over
+    *a level claim nobody can currently verify*.
+- (b) Align down instead: pin our `cosign-release` to `v2.2.3` to match the
+  generator, keeping SLSA L3. One cosign v2 then verifies both, and the
+  README's existing commands work unchanged. Rejected against the stated goal
+  — it moves us *off* current tooling, and consumers on the v3 default (the
+  installer's own default) could not verify us.
 - (c) Keep both schemes and document two binaries (v3 for the signature, v2 for
-  the provenance). Honest, zero pipeline change, but a bad consumer experience
-  and an easy thing to get wrong.
-- (d) Keep the signature, drop the SLSA provenance job and its README claim
-  until upstream ships a v3-writing generator.
-
-Whichever is chosen, the README's "Both are signed with cosign keyless and ship
-SLSA Level 3 provenance attestations" line needs to state the cosign version
-the reader must use.
+  the provenance). Zero pipeline change, bad consumer experience.
+- (d) Keep the signature, drop the provenance job and its README claim until
+  upstream ships a v3-writing generator — which, per the issue tracker, is not
+  in progress.
 
 **OQ-2 — Do we pin cosign in `mise.toml` instead of `latest`?**
 
