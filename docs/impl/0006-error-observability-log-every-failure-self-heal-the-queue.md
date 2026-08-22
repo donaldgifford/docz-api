@@ -180,6 +180,13 @@ F5's fix: bad App credentials fail the deploy, not the fifth silent retry.
 - [ ] Unit tests with a stub `http.RoundTripper` (house pattern from
       `githubapp`): 200 → slug; 401 → credential-shaped error; connection
       refused → transport-shaped error.
+- [ ] Document the health-check trio in `deploy/README.md` (and the chart
+      README's probes note): `/healthz` = liveness ("pod is up", bare
+      200); `/readyz` = readiness ("dependencies connected, can accept
+      traffic" — postgres/meili/redis, 503 names the offender); the boot
+      self-check = startup credential validation (crashes the boot on bad
+      creds, in **neither** probe — GitHub down must not pull the read
+      API from rotation).
 
 #### Success Criteria
 
@@ -381,13 +388,25 @@ assuming it.
 Numbered for review; `a` is the recommendation. Reply with a letter per
 question, or "other: …".
 
+**All answered `a` (2026-08-22).** OQ-1a comes with a probe-semantics note
+from review: the operator asked whether `/healthz` vs `/readyz` should be
+made more explicit — `/healthz` = "pod is up", `/readyz` = "dependencies
+connected, can accept traffic". That is exactly the current semantics
+(liveness is a bare 200; readiness checks postgres/meili/redis and 503s
+naming the offender), so no endpoint changes — but the distinction gets
+**documented**, and the boot self-check is deliberately a *third* thing:
+startup credential validation, in **neither** probe. GitHub stays out of
+`/readyz` on purpose (readiness gates traffic routing; the read API serves
+fine with GitHub down), and a credential failure crashes the boot rather
+than flapping readiness. A doc task was added to Phase 3.
+
 1. **Boot self-check failure mode (Phase 3)** — what does a failed
    `GET /app` do to startup?
    - **a. Discriminate: credential rejection (4xx from GitHub) fails the
      boot; transport errors (DNS, refused, timeout) log Warn and
      continue.** Bad creds are permanent and deserve a crash-loop an
      operator sees immediately; a GitHub blip is transient and should not
-     take down an otherwise healthy read API. *(Recommended.)*
+     take down an otherwise healthy read API. *(Recommended.)* **Answered: (a).**
    - b. Always fail fast — simplest, matches the OIDC-discovery precedent
      exactly, but a GitHub outage at pod-restart time crash-loops the
      whole API.
@@ -400,7 +419,7 @@ question, or "other: …".
    - **a. 503 with the standard `{"error":…}` envelope.** Honest ("service
      can't answer authn right now" ≠ "you are logged out"), and it stops
      the SPA from bouncing users to the login panel during a Redis blip.
-     5xx is not per-op specced, so no OpenAPI change. *(Recommended.)*
+     5xx is not per-op specced, so no OpenAPI change. *(Recommended.)* **Answered: (a).**
    - b. Keep 401, just add the Error log — zero behavior change, but the
      SPA logs everyone out for the duration of any Redis hiccup.
    - c. 500 — same honesty as (a) with a less precise status code.
@@ -410,7 +429,7 @@ question, or "other: …".
    - **a. `AUTH_PROVIDERS=none`, required to be the sole entry.** One
      existing knob, reads naturally next to `github,okta`, impossible to
      enable by omission (the default stays `github`), and the chart's
-     provider-gating helper handles it for free. *(Recommended.)*
+     provider-gating helper handles it for free. *(Recommended.)* **Answered: (a).**
    - b. A separate `AUTH_DISABLED=true` boolean — more explicit, but two
      knobs can now contradict each other (`AUTH_DISABLED=true` +
      `AUTH_PROVIDERS=okta`) and both sides need precedence rules.
@@ -423,7 +442,7 @@ question, or "other: …".
    - **a. Not mounted → 404.** The absent-route precedent (the search
      route is absent when no searcher is wired); nothing advertises the
      endpoints, and the SPA never links them (its login UI is 401-driven
-     and none-mode never 401s). *(Recommended.)*
+     and none-mode never 401s). *(Recommended.)* **Answered: (a).**
    - b. Mounted, returning 503 + an "auth disabled" envelope — friendlier
      to a human poking with curl, at the cost of a bespoke handler for a
      mode meant to be temporary.
@@ -432,7 +451,7 @@ question, or "other: …".
    `/api/v1/auth/session` return in none-mode?
    - **a. `{provider: "none", subject: "anonymous"}` with empty
      email/login/groups**, via the normal `sessionDTO` — the SPA renders
-     its session menu unchanged, no spec change. *(Recommended.)*
+     its session menu unchanged, no spec change. *(Recommended.)* **Answered: (a).**
    - b. 404/absent endpoint in none-mode — cleaner conceptually, but the
      SPA treats a session-endpoint failure as logged-out and may render
      login affordances that lead nowhere (404 per OQ-4a).
@@ -444,7 +463,7 @@ question, or "other: …".
      seconds-long ingest window), now visible at Info, and an eventual
      periodic-resync backstop erases the class entirely; a dirty-flag
      re-enqueue in the worker completion path is real complexity for a
-     shrinking gap. *(Recommended.)*
+     shrinking gap. *(Recommended.)* **Answered: (a).**
    - b. Fix now: on active-state conflict, re-enqueue with
      `ProcessIn(debounce)` under a *different* task id (e.g.
      `ingest:<repo>:followup`), accepting the second-slot bookkeeping.
