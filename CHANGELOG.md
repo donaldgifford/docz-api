@@ -9,6 +9,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(chart)* Make the Tailscale sidecar restricted-compliant and stateful ([#17](https://github.com/donaldgifford/docz-api/issues/17))
 
+### Documentation
+
+- *(inv)* INV-0007 — ingest failures are silent and block re-ingestion
+- *(inv)* Extend INV-0007 with no-auth mode feasibility and silent-sink audit
+
 ## [0.5.1] - 2026-08-11
 
 ### Features
