@@ -13,6 +13,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(inv)* INV-0007 — ingest failures are silent and block re-ingestion
 - *(inv)* Extend INV-0007 with no-auth mode feasibility and silent-sink audit
+- *(inv)* Record OQ-1 field evidence — start lines can't discriminate failure stage
 
 ## [0.5.1] - 2026-08-11
 
