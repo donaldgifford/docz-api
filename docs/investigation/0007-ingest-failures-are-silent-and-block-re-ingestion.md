@@ -346,6 +346,15 @@ Code fixes, in value order — all small:
   order: mangled `private-key` PEM in the new external Secret; blocked
   egress to `api.github.com`; repo missing `.docz.yaml` (a *permanent*
   failure that retries can never fix); installation-id mismatch.
+  **Field evidence (2026-08-22):** the worker logs show
+  `processing ingest job` per repo, so jobs dequeue and start — but that
+  line fires *before* `ingestor.Run` (`worker.go:101`), i.e. before any
+  GitHub request, so it cannot discriminate an auth failure from any
+  later stage; there is no subsequent log line on the failure path at
+  all. Operator testing makes a credential/key-mangling issue unlikely,
+  but logs alone can neither confirm nor refute *any* suspect — OQ-1 in
+  miniature. The archived task's stored error remains the only path to
+  the answer until fix 1 lands.
 - **OQ-2** — should the boot self-check fail startup or warn-only?
   Fail-fast matches the OIDC-discovery precedent (a bad issuer fails the
   boot); warn-only keeps the read API serving when only ingest is broken.
