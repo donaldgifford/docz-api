@@ -31,7 +31,7 @@ created: 2026-08-22
   - [Phase 4: The four mute HTTP sinks](#phase-4-the-four-mute-http-sinks)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
-  - [Phase 5: AUTH_PROVIDERS=none — first-setup no-auth mode](#phase-5-authprovidersnone--first-setup-no-auth-mode)
+  - [Phase 5: AUTH_PROVIDERS=none — first-setup no-auth mode](#phase-5-auth_providersnone--first-setup-no-auth-mode)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
   - [Phase 6: Deliberate-failure verification, deploy, close-out](#phase-6-deliberate-failure-verification-deploy-close-out)
@@ -387,7 +387,7 @@ question, or "other: …".
      boot; transport errors (DNS, refused, timeout) log Warn and
      continue.** Bad creds are permanent and deserve a crash-loop an
      operator sees immediately; a GitHub blip is transient and should not
-     take down an otherwise healthy read API. _(Recommended.)_
+     take down an otherwise healthy read API. *(Recommended.)*
    - b. Always fail fast — simplest, matches the OIDC-discovery precedent
      exactly, but a GitHub outage at pod-restart time crash-loops the
      whole API.
@@ -400,7 +400,7 @@ question, or "other: …".
    - **a. 503 with the standard `{"error":…}` envelope.** Honest ("service
      can't answer authn right now" ≠ "you are logged out"), and it stops
      the SPA from bouncing users to the login panel during a Redis blip.
-     5xx is not per-op specced, so no OpenAPI change. _(Recommended.)_
+     5xx is not per-op specced, so no OpenAPI change. *(Recommended.)*
    - b. Keep 401, just add the Error log — zero behavior change, but the
      SPA logs everyone out for the duration of any Redis hiccup.
    - c. 500 — same honesty as (a) with a less precise status code.
@@ -410,7 +410,7 @@ question, or "other: …".
    - **a. `AUTH_PROVIDERS=none`, required to be the sole entry.** One
      existing knob, reads naturally next to `github,okta`, impossible to
      enable by omission (the default stays `github`), and the chart's
-     provider-gating helper handles it for free. _(Recommended.)_
+     provider-gating helper handles it for free. *(Recommended.)*
    - b. A separate `AUTH_DISABLED=true` boolean — more explicit, but two
      knobs can now contradict each other (`AUTH_DISABLED=true` +
      `AUTH_PROVIDERS=okta`) and both sides need precedence rules.
@@ -423,7 +423,7 @@ question, or "other: …".
    - **a. Not mounted → 404.** The absent-route precedent (the search
      route is absent when no searcher is wired); nothing advertises the
      endpoints, and the SPA never links them (its login UI is 401-driven
-     and none-mode never 401s). _(Recommended.)_
+     and none-mode never 401s). *(Recommended.)*
    - b. Mounted, returning 503 + an "auth disabled" envelope — friendlier
      to a human poking with curl, at the cost of a bespoke handler for a
      mode meant to be temporary.
@@ -432,7 +432,7 @@ question, or "other: …".
    `/api/v1/auth/session` return in none-mode?
    - **a. `{provider: "none", subject: "anonymous"}` with empty
      email/login/groups**, via the normal `sessionDTO` — the SPA renders
-     its session menu unchanged, no spec change. _(Recommended.)_
+     its session menu unchanged, no spec change. *(Recommended.)*
    - b. 404/absent endpoint in none-mode — cleaner conceptually, but the
      SPA treats a session-endpoint failure as logged-out and may render
      login affordances that lead nowhere (404 per OQ-4a).
@@ -444,7 +444,7 @@ question, or "other: …".
      seconds-long ingest window), now visible at Info, and an eventual
      periodic-resync backstop erases the class entirely; a dirty-flag
      re-enqueue in the worker completion path is real complexity for a
-     shrinking gap. _(Recommended.)_
+     shrinking gap. *(Recommended.)*
    - b. Fix now: on active-state conflict, re-enqueue with
      `ProcessIn(debounce)` under a *different* task id (e.g.
      `ingest:<repo>:followup`), accepting the second-slot bookkeeping.
