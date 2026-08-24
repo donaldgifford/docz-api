@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+
+	"github.com/donaldgifford/docz-api/internal/auth"
 )
 
 // ctxKey is the unexported context key for the resolved Session.
@@ -48,6 +50,36 @@ func Middleware(store lookuper) func(http.Handler) http.Handler {
 			}
 			ctx := context.WithValue(r.Context(), ctxKey{}, sess)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// Anonymous identity constants for the no-auth mode (AUTH_PROVIDERS=none).
+// AnonymousSubject doubles as the session id, which never exists in Redis:
+// there is nothing to look up and nothing to revoke, so logout is a harmless
+// no-op delete of an absent key.
+const (
+	AnonymousProvider = "none"
+	AnonymousSubject  = "anonymous"
+)
+
+// AnonymousMiddleware injects a synthetic Session on every request instead of
+// resolving a cookie, which is what makes AUTH_PROVIDERS=none work: the whole
+// /api/v1 surface stays mounted and FromContext keeps returning an identity, so
+// no handler needs a no-auth branch. It is the only middleware in this package
+// that never rejects a request — the read API is open under it, by design.
+func AnonymousMiddleware() func(http.Handler) http.Handler {
+	sess := Session{
+		ID: AnonymousSubject,
+		Identity: auth.Identity{
+			Provider: AnonymousProvider,
+			Subject:  AnonymousSubject,
+			Login:    AnonymousSubject,
+		},
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, sess)))
 		})
 	}
 }

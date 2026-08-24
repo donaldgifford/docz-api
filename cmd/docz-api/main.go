@@ -200,6 +200,11 @@ func runServer(
 		return fmt.Errorf("starting queue worker: %w", serr)
 	}
 
+	if cfg.AuthDisabled() {
+		slog.Warn("auth disabled (AUTH_PROVIDERS=none): the read API is open, " +
+			"every request is served as the anonymous identity")
+	}
+
 	slog.Info("starting docz-api",
 		"version", version,
 		"commit", commit,
@@ -224,15 +229,19 @@ func runServer(
 	// resolves behind a real identity.
 	authorizer := authorize.NewAllReposAuthorizer(st)
 	gate := func(next http.Handler) http.Handler {
-		return session.Middleware(sessionStore)(authorize.Middleware(authorizer)(next))
+		return authn(cfg, sessionStore)(authorize.Middleware(authorizer)(next))
 	}
 	authHandler := authhttp.New(
 		auth.NewRegistry(providers), sessionStore, st, []byte(cfg.Session.Secret.Reveal()),
 	)
 	// The read/search API plus the two session-gated auth endpoints share the gate.
 	httpapi.NewHandlerWithSearch(st, searchClient).Mount(router, gate, authHandler.MountAPI)
-	// /auth/login and /auth/callback are public (state is their CSRF guard).
-	authHandler.MountPublic(router)
+	if !cfg.AuthDisabled() {
+		// /auth/login and /auth/callback are public (state is their CSRF guard).
+		// Under none-mode there is no provider to redirect to, so the routes are
+		// left unmounted and 404 — the absent-route precedent from search.
+		authHandler.MountPublic(router)
+	}
 
 	// The GitHub webhook receiver sits outside /api/v1 and the auth gate: it is
 	// authenticated by its HMAC signature, not a session. It inherits the
@@ -527,4 +536,15 @@ func checkGitHubCredentials(ctx context.Context, cfg config.GitHubConfig) error 
 			"err", err)
 		return nil
 	}
+}
+
+// authn returns the authentication middleware for the /api/v1 gate: the real
+// session check normally, or the anonymous injector under AUTH_PROVIDERS=none.
+// Both inject a session.Session, so everything downstream — authorize, the
+// handlers, /api/v1/auth/session — is identical in either mode.
+func authn(cfg *config.Config, sessionStore *session.Store) func(http.Handler) http.Handler {
+	if cfg.AuthDisabled() {
+		return session.AnonymousMiddleware()
+	}
+	return session.Middleware(sessionStore)
 }
