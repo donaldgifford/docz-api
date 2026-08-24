@@ -204,22 +204,22 @@ F5's fix: bad App credentials fail the deploy, not the fifth silent retry.
 
 #### Tasks
 
-- [ ] Add `githubapp.SelfCheck(ctx, appID, pemKey, apiBase) (slug string,
+- [x] Add `githubapp.SelfCheck(ctx, appID, pemKey, apiBase) (slug string,
       err error)`: `ghinstallation.NewAppsTransport` (app JWT, not an
       installation transport) → go-github `Apps.Get(ctx, "")` → return the
       app slug. Honor `apiBase` exactly as `NewClient` does.
-- [ ] Wire into `run()` after config load, bounded by a short context
+- [x] Wire into `run()` after config load, bounded by a short context
       (reuse the `oidcDiscoveryTimeout` precedent): log
       `"github app authenticated" slug=…` on success; on failure apply the
       OQ-1 decision (recommendation: fail boot on credential rejection,
       warn-and-continue on transport errors, discriminated via
       `*github.ErrorResponse` status).
-- [ ] Skip the check in `-migrate` mode (no GitHub involvement); run it for
+- [x] Skip the check in `-migrate` mode (no GitHub involvement); run it for
       serve and `-onboard`.
-- [ ] Unit tests with a stub `http.RoundTripper` (house pattern from
+- [x] Unit tests with a stub `http.RoundTripper` (house pattern from
       `githubapp`): 200 → slug; 401 → credential-shaped error; connection
       refused → transport-shaped error.
-- [ ] Document the health-check trio in `deploy/README.md` (and the chart
+- [x] Document the health-check trio in `deploy/README.md` (and the chart
       README's probes note): `/healthz` = liveness ("pod is up", bare
       200); `/readyz` = readiness ("dependencies connected, can accept
       traffic" — postgres/meili/redis, 503 names the offender); the boot
@@ -235,6 +235,18 @@ F5's fix: bad App credentials fail the deploy, not the fifth silent retry.
 - A valid deploy logs the authenticated app slug once at startup.
 - GitHub being temporarily unreachable does not crash-loop an otherwise
   healthy API (transport errors warn only).
+
+**Phase 3 complete (2026-08-24).** All five tasks done; `just lint` and the
+full unit suite green.
+
+Implementation note beyond the plan: a malformed PEM fails inside
+`ghinstallation.NewAppsTransport` — before any HTTP request — so that path is
+classified as `ErrCredentialsRejected` too. It is the single most likely
+credential fault when moving between secret stores, and checking only the
+API response would have missed it entirely. Rate limiting is excluded from
+the rejection class explicitly (`*github.RateLimitError` /
+`*github.AbuseRateLimitError` arrive as 4xx but are transient), so throttling
+can never be mistaken for a bad key and crash-loop a deploy.
 
 ### Phase 4: The four mute HTTP sinks
 
