@@ -24,6 +24,7 @@ created: 2026-08-21
   - [F2 — Our worker's no-log-here comment codifies a false assumption](#f2--our-workers-no-log-here-comment-codifies-a-false-assumption)
   - [F3 — The error text lives only in Redis, on the task record](#f3--the-error-text-lives-only-in-redis-on-the-task-record)
   - [F4 — An exhausted task silently swallows every future ingest for that repo](#f4--an-exhausted-task-silently-swallows-every-future-ingest-for-that-repo)
+  - [F4b — The same swallow fires after every SUCCESSFUL ingest (found in IMPL-0006)](#f4b--the-same-swallow-fires-after-every-successful-ingest-found-in-impl-0006)
   - [F5 — Nothing validates GitHub App credentials before first use](#f5--nothing-validates-github-app-credentials-before-first-use)
   - [F6 — A no-auth mode is feasible: login auth and App auth are independent](#f6--a-no-auth-mode-is-feasible-login-auth-and-app-auth-are-independent)
   - [F7 — The silent-sink pattern recurs at four more operational choke points](#f7--the-silent-sink-pattern-recurs-at-four-more-operational-choke-points)
@@ -173,6 +174,36 @@ task. Nothing logs that the swallow happened.
 Coalesce-as-success is the right semantics against a *pending/scheduled*
 task (the pending job will cover the trigger). It is the wrong semantics
 against a *dead* one (nothing will).
+
+### F4b — The same swallow fires after every SUCCESSFUL ingest (found in IMPL-0006)
+
+F4 understates the blast radius. While implementing the fix (IMPL-0006
+Phase 2) the *completed* state turned out to hit the identical trap, and it
+fires on the happy path rather than after a failure:
+
+- `EnqueueIngest` set **`Retention(24h)`**, so a successful run takes asynq's
+  `markAsComplete` path, which does `HSET … "state" "completed"` and **keeps
+  the task key** (`internal/rdb/rdb.go:392`). Without retention the
+  `markAsDone` path `DEL`s it (`rdb.go:292`).
+- The enqueue uniqueness check is the same bare `EXISTS` (F4.2), so for the
+  full 24-hour retention window the repo's task id is taken by its own last
+  successful run.
+- Conflict was mapped to success, so **every push for that repo in the next
+  24 hours was silently discarded**. Effectively: *one ingest per repo per
+  day*, with no error anywhere — the drop was logged at Debug (F7.6).
+
+Proven by `TestReingestAfterSuccessfulRun` (real Redis), which fails against
+the pre-fix code: the second trigger never reaches the ingestor.
+
+This is a strictly better explanation of the reported symptom than any OQ-1
+suspect — it needs no credential problem, no egress problem, and no missing
+`.docz.yaml`. It also explains why the first onboard of a repo worked and
+later pushes appeared to do nothing.
+
+**Fixed** in IMPL-0006 Phase 2: conflicts are inspected rather than assumed
+(`classifyConflict`), terminal states are cleared and the trigger
+re-enqueued, and `Retention` is dropped so a success frees the id
+immediately.
 
 ### F5 — Nothing validates GitHub App credentials before first use
 
@@ -355,6 +386,11 @@ Code fixes, in value order — all small:
   but logs alone can neither confirm nor refute *any* suspect — OQ-1 in
   miniature. The archived task's stored error remains the only path to
   the answer until fix 1 lands.
+  **Superseded in practice (2026-08-24):** IMPL-0006 Phase 2 found F4b — a
+  successful ingest blocked that repo's triggers for 24 hours — which
+  explains the reported symptom without any credential, egress, or config
+  fault. The archived task's stored error should still be read to confirm,
+  but the leading hypothesis is now F4b rather than any original suspect.
 - **OQ-2** — should the boot self-check fail startup or warn-only?
   Fail-fast matches the OIDC-discovery precedent (a bad issuer fails the
   boot); warn-only keeps the read API serving when only ingest is broken.
