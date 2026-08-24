@@ -254,30 +254,30 @@ F7's fix: every wrapped error chain now terminates in a logging sink.
 
 #### Tasks
 
-- [ ] `internal/authorize/authorize.go:52` — `slog.Error("authorize failed",
+- [x] `internal/authorize/authorize.go:52` — `slog.Error("authorize failed",
       "err", err)` before the 500. (The chain carries the store context;
       nothing else needed.)
-- [ ] `internal/session/middleware.go:33-35` — discriminate:
+- [x] `internal/session/middleware.go:33-35` — discriminate:
       `errors.Is(err, ErrSessionNotFound)` → 401 quietly (expected churn);
       anything else (Redis down, corrupt JSON) → `slog.Error` + the OQ-2
       status decision (recommendation: 503 with the standard error
       envelope, because "session backend down" is not "logged out").
-- [ ] `internal/webhook/webhook.go:96` — log Warn on body-read failure
+- [x] `internal/webhook/webhook.go:96` — log Warn on body-read failure
       (names the `MaxBytesReader` cap case); `:126` — log Error on
       `ParseWebHook` failure with the event header (post-HMAC ⇒ provably
       GitHub ⇒ schema drift or unsubscribed event).
-- [ ] `internal/httpapi/handler.go:112-113` and
+- [x] `internal/httpapi/handler.go:112-113` and
       `internal/authhttp/handler.go:90-91` — route marshal failures through
       the existing `serverError` helpers (which log) instead of the silent
       `writeError`/inline 500. Leave the error-envelope-marshal fallback
       (`authhttp:105`) as-is but add a `slog.Error` (practically
       unreachable; one line buys completeness).
-- [ ] Unit tests per sink with a recording slog handler: erroring fake
+- [x] Unit tests per sink with a recording slog handler: erroring fake
       authorizer / lookuper / marshal-poisoned DTO (`json.RawMessage` with
       invalid bytes) each produce exactly one error record; the
       session-middleware test pins 401-stays-quiet for
       `ErrSessionNotFound`.
-- [ ] Contract test still green; if OQ-2a (503) is chosen, confirm the spec
+- [x] Contract test still green; if OQ-2a (503) is chosen, confirm the spec
       needs no change (the contract test exercises defined scenarios only;
       5xx paths are not specced per-op today).
 
@@ -290,6 +290,28 @@ F7's fix: every wrapped error chain now terminates in a logging sink.
   delegates to a logging helper; `just lint` green.
 - 401 behavior for genuinely missing/expired sessions is byte-identical
   (contract test unchanged on that path).
+
+**Phase 4 complete (2026-08-24).** All six tasks done; `just lint` (0 issues)
+and the full unit suite — including the OpenAPI contract test — green.
+
+Implementation notes beyond the plan:
+
+- The session-gate outage status is a new **503 `{"error":"session
+  unavailable"}`** (OQ-2a), written by a dedicated `writeSessionUnavailable`
+  helper alongside the existing 401 one. The distinction matters downstream:
+  docz-site drives its login UI off 401, so answering 401 during a Redis blip
+  would bounce every signed-in user to the login screen for the duration of
+  the outage. The 401 path for a genuinely absent session is byte-identical.
+- The webhook body-read sink logs at **Warn with headers only** — that
+  failure happens *before* HMAC verification, so the payload is unverified
+  and must not be logged. The `ParseWebHook` sink logs at Error and says so
+  in its comment, because HMAC has already passed there: the payload
+  provably came from GitHub, making it schema drift rather than a bad caller.
+- The `writeJSON` marshal sinks in `httpapi` and `authhttp` now route through
+  each package's existing `serverError` helper rather than a new one, so the
+  response envelope and the log line stay in one place per package.
+- No spec change was needed: the contract test exercises defined scenarios
+  only, and 5xx paths are not specced per-op today.
 
 ### Phase 5: AUTH_PROVIDERS=none — first-setup no-auth mode
 
@@ -386,7 +408,7 @@ assuming it.
 ## File Changes
 
 | File | Change |
-|------|--------|
+| ---- | ------ |
 | `internal/queue/worker.go` | `Logger`/`LogLevel`/`ErrorHandler` in Config; comment fix |
 | `internal/queue/logger.go` (new) | slog-backed `asynq.Logger` adapter |
 | `internal/queue/client.go` | Inspector; conflict state-dispatch; coalesce log Info |

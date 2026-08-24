@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 )
@@ -31,6 +32,17 @@ func Middleware(store lookuper) func(http.Handler) http.Handler {
 			}
 			sess, err := store.Lookup(r.Context(), cookie.Value)
 			if err != nil {
+				// A missing session is ordinary churn (expiry, logout, a stale
+				// cookie) and stays a quiet 401. Anything else — Redis
+				// unreachable, a session that will not decode — is an outage,
+				// not a verdict on the caller: answering 401 would log every
+				// user out and leave no trace of why (INV-0007 F7.2).
+				if !errors.Is(err, ErrSessionNotFound) {
+					slog.ErrorContext(r.Context(), "session lookup failed",
+						"err", err, "path", r.URL.Path)
+					writeSessionUnavailable(w)
+					return
+				}
 				writeUnauthorized(w)
 				return
 			}
@@ -49,9 +61,24 @@ func FromContext(ctx context.Context) (Session, bool) {
 
 // writeUnauthorized writes the 401 JSON envelope used by the auth gate.
 func writeUnauthorized(w http.ResponseWriter) {
+	writeJSONStatus(w, http.StatusUnauthorized, `{"error":"authentication required"}`)
+}
+
+// writeSessionUnavailable reports that the session backend could not answer, as
+// distinct from the caller being unauthenticated. 503 keeps clients from
+// treating a Redis blip as a logout: docz-site drives its login UI off 401, so
+// answering 401 here would bounce every signed-in user to the login screen for
+// the duration of the outage.
+func writeSessionUnavailable(w http.ResponseWriter) {
+	writeJSONStatus(w, http.StatusServiceUnavailable, `{"error":"session unavailable"}`)
+}
+
+// writeJSONStatus writes a fixed JSON body with the given status. A failed
+// write means the client is gone, which is nothing the server can act on.
+func writeJSONStatus(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	if _, err := w.Write([]byte(`{"error":"authentication required"}`)); err != nil {
-		slog.Debug("unauthorized response write failed", "err", err)
+	w.WriteHeader(status)
+	if _, err := w.Write([]byte(body)); err != nil {
+		slog.Debug("response write failed", "err", err, "status", status)
 	}
 }
