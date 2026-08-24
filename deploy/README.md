@@ -249,11 +249,27 @@ tenant (same OIDC code path); see
 
 ## Health and observability
 
-- **Liveness:** `GET /healthz` — process is up.
-- **Readiness:** `GET /readyz` — Postgres, Redis, and Meilisearch are all
-  reachable (503 with a per-dependency body otherwise). Point your
-  orchestrator's probes here; the distroless image has no shell, so there is no
-  in-container healthcheck for the service.
+Three separate mechanisms answer three different questions. Keeping them
+distinct is deliberate — conflating them makes an outage in one dependency
+either restart healthy pods or silently do nothing.
+
+- **Liveness:** `GET /healthz` — _the process is up_. A bare 200 that checks
+  nothing downstream, because failing it makes the kubelet **restart the pod**,
+  and restarting docz-api cannot fix a database that is down. Never add
+  dependency checks here.
+- **Readiness:** `GET /readyz` — _dependencies are connected and this pod can
+  accept traffic_. Checks Postgres, Redis, and Meilisearch, returning 503 with a
+  per-dependency body naming the offender. Failing it removes the pod from
+  Service endpoints but leaves it running. Point your orchestrator's probes at
+  both; the distroless image has no shell, so there is no in-container
+  healthcheck for the service.
+- **Startup credential check:** at boot the service authenticates as the GitHub
+  App (`GET /app`) and logs the app id, slug and name. This is deliberately in
+  **neither** probe. GitHub is not a serving dependency — the read API answers
+  from Postgres and Meilisearch while GitHub is unreachable — so it must not
+  gate readiness. Credentials GitHub _rejects_ (bad app id, malformed private
+  key) fail startup outright; GitHub merely being _unreachable_ logs a warning
+  and startup continues.
 - **Metrics:** `GET /metrics` — Prometheus exposition (disable with
   `METRICS_ENABLED=false`). Scrape it on the internal network; it is not behind
   the auth gate.

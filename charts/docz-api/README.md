@@ -164,6 +164,15 @@ managed instances.
 
 ## Observability
 
+- **Probes:** `/healthz` is liveness — the process is up, checking nothing
+  downstream, since failing it restarts the pod and a restart cannot fix a
+  failed dependency. `/readyz` is readiness — Postgres, Redis and Meilisearch
+  are reachable, 503 naming the offender, which removes the pod from Service
+  endpoints without restarting it. The chart wires both by default.
+- **GitHub App credentials are checked at startup, not by a probe.** The
+  service authenticates as the App at boot and logs its identity; credentials
+  GitHub rejects fail the deploy, while GitHub being unreachable only warns.
+  GitHub is not a serving dependency, so it must never gate readiness.
 - Set `metrics.enabled: true` (default) to serve Prometheus metrics on
   `/metrics`; enable `serviceMonitor.enabled: true` to have a Prometheus
   Operator scrape the `http` port at `/metrics`.

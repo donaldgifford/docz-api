@@ -28,6 +28,7 @@ import (
 	"github.com/donaldgifford/docz-api/internal/authhttp"
 	"github.com/donaldgifford/docz-api/internal/authorize"
 	"github.com/donaldgifford/docz-api/internal/config"
+	"github.com/donaldgifford/docz-api/internal/githubapp"
 	"github.com/donaldgifford/docz-api/internal/httpapi"
 	"github.com/donaldgifford/docz-api/internal/queue"
 	"github.com/donaldgifford/docz-api/internal/search"
@@ -117,6 +118,14 @@ func run() error {
 	if *migrateOnly {
 		slog.Info("migrations applied; exiting")
 		return nil
+	}
+
+	// Prove the App credentials before anything depends on them. They are
+	// otherwise first exercised inside a worker job, where a bad key looked like
+	// an unexplained ingest failure (INV-0007 F5). Skipped for -migrate, which
+	// never talks to GitHub.
+	if err := checkGitHubCredentials(context.Background(), cfg.GitHub); err != nil {
+		return err
 	}
 
 	// Runtime connection pool (separate from the migration connection). Owned
@@ -485,5 +494,37 @@ func shutdownTelemetry(shutdown func(context.Context) error) {
 	defer cancel()
 	if err := shutdown(ctx); err != nil {
 		slog.Warn("telemetry shutdown", "err", err)
+	}
+}
+
+// githubCheckTimeout bounds the startup App-credential check. It matches the
+// OIDC discovery budget: both are one startup round trip to an identity
+// provider, and neither should stall a deploy for long.
+const githubCheckTimeout = 15 * time.Second
+
+// checkGitHubCredentials authenticates as the App at startup so a bad app id or
+// private key fails the deploy loudly instead of surfacing later as an ingest
+// that cannot succeed (INV-0007 F5).
+//
+// Only a rejection by GitHub is fatal. Being unable to reach GitHub is
+// transient and logged as a warning: the read API serves fine from Postgres and
+// Meilisearch while GitHub is unavailable, so a GitHub outage during a pod
+// restart must not turn into a crash loop.
+func checkGitHubCredentials(ctx context.Context, cfg config.GitHubConfig) error {
+	ctx, cancel := context.WithTimeout(ctx, githubCheckTimeout)
+	defer cancel()
+
+	app, err := githubapp.SelfCheck(ctx, cfg.AppID, []byte(cfg.PrivateKey.Reveal()), cfg.APIBase)
+	switch {
+	case err == nil:
+		slog.Info("github app authenticated",
+			"app_id", app.ID, "app_slug", app.Slug, "app_name", app.Name)
+		return nil
+	case errors.Is(err, githubapp.ErrCredentialsRejected):
+		return fmt.Errorf("checking github app credentials: %w", err)
+	default:
+		slog.Warn("could not verify github app credentials at startup; continuing",
+			"err", err)
+		return nil
 	}
 }
