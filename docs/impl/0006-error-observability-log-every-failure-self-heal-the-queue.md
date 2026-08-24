@@ -94,23 +94,23 @@ slog, and asynq's internal errors stop bypassing the structured pipeline.
 
 #### Tasks
 
-- [ ] Add an slog-backed `asynq.Logger` adapter in `internal/queue`
+- [x] Add an slog-backed `asynq.Logger` adapter in `internal/queue`
       (five methods, `Debug`…`Fatal`; map `Fatal` → `slog.Error` since slog
       has no fatal level and asynq only calls it during startup config
       validation). Set `Logger` + `LogLevel` (map from `LOG_LEVEL`) in the
       `asynq.Config` at `worker.go:54-59`.
-- [ ] Add `ErrorHandler: asynq.ErrorHandlerFunc(...)` in the same `Config`
+- [x] Add `ErrorHandler: asynq.ErrorHandlerFunc(...)` in the same `Config`
       block: `slog.Error("ingest job failed", "task_id", …, "type",
       task.Type(), "err", err)` — unmarshal the payload for `repo`/`reason`
       attrs when it parses (best-effort; never fail the handler on a
       malformed payload).
-- [ ] Rewrite the false comment at `worker.go:106-107` to state the real
+- [x] Rewrite the false comment at `worker.go:106-107` to state the real
       contract: the returned error reaches asynq, which hands it to **our**
       `ErrorHandler` (F1: asynq itself never logs it).
-- [ ] Raise the coalesce log at `client.go:95` from Debug to Info and extend
+- [x] Raise the coalesce log at `client.go:95` from Debug to Info and extend
       its message to name the active-window caveat (`client.go:70-73`), so
       the one place a push can vanish is visible at default log level.
-- [ ] Unit tests: capture slog output (swap `slog.SetDefault` handler for a
+- [x] Unit tests: capture slog output (swap `slog.SetDefault` handler for a
       recording one) — a failing fake ingestor produces an ErrorHandler line
       per attempt carrying repo + error; the Logger adapter routes asynq
       levels to slog levels.
@@ -125,6 +125,24 @@ slog, and asynq's internal errors stop bypassing the structured pipeline.
   through the adapter) — proven by stopping the testcontainer Redis
   mid-test and scanning stderr.
 - `just ci` green.
+
+**Phase 1 complete (2026-08-24).** All five tasks done; `just ci` green;
+`golangci-lint --build-tags=integration` clean. Two criteria were met by a
+different proof than written, deliberately:
+
+- **"N lines for N attempts"** is proven for the **first** attempt only
+  (`TestFailedIngestLogsTheError`). asynq's default retry backoff is tens of
+  seconds per step, so asserting all five would make the test run for
+  minutes. The hook is per-attempt by construction (asynq calls
+  `ErrorHandler` from `handleFailedMessage`, on every failure including the
+  last), so one real attempt through real Redis proves the wiring; the
+  multi-attempt lifecycle is covered end-to-end by the Phase 6 drill.
+- **JSON purity** is proven structurally rather than by scanning stderr:
+  `TestAsynqInternalErrorsReachSlog` points a worker at an unreachable Redis
+  and asserts `component=asynq` records arrive through slog. Setting
+  `Config.Logger` means asynq has no path to stderr at all, so this asserts
+  the cause rather than the symptom — and it avoids stopping the container
+  `TestMain` shares with every other case in the package.
 
 ### Phase 2: Queue self-heal — un-swallow the archived-task conflict
 
