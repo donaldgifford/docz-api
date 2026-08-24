@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -376,5 +377,120 @@ func TestAsynqInternalErrorsReachSlog(t *testing.T) {
 
 	if !waitFor(func() bool { return len(rec.findAttr("component", "asynq")) > 0 }, 15*time.Second) {
 		t.Fatal("no component=asynq record: asynq is not logging through slog")
+	}
+}
+
+// A repo must be ingestable more than once. asynq's task-id uniqueness check is
+// a bare EXISTS spanning every state, so a finished task keeps owning the id:
+// completed for the retention TTL after a success, archived for 90 days after
+// retries are exhausted. Treating those conflicts as "already covered" silently
+// discarded every later trigger — capping a repo at one ingest per retention
+// window (INV-0007 F4 and the completed-state case found implementing it).
+func TestReingestAfterSuccessfulRun(t *testing.T) {
+	ing := &countingIngestor{}
+	client, err := queue.NewClient(redisURL, 0)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	defer func() {
+		if cerr := client.Close(); cerr != nil {
+			t.Logf("close client: %v", cerr)
+		}
+	}()
+
+	worker, err := queue.NewWorker(redisURL, 1, ing)
+	if err != nil {
+		t.Fatalf("new worker: %v", err)
+	}
+	if err := worker.Start(); err != nil {
+		t.Fatalf("start worker: %v", err)
+	}
+	defer worker.Shutdown()
+
+	first := &queue.IngestJob{InstallationID: 1, Owner: "acme", Name: "reingest", Reason: "onboard"}
+	if err := client.EnqueueIngest(t.Context(), first); err != nil {
+		t.Fatalf("enqueue first: %v", err)
+	}
+	if got := waitForCount(ing, 1, 8*time.Second); got != 1 {
+		t.Fatalf("first ingest ran %d times, want 1", got)
+	}
+
+	// A later push for the same repo, after the first run finished.
+	second := &queue.IngestJob{InstallationID: 1, Owner: "acme", Name: "reingest", Reason: "push"}
+	if err := client.EnqueueIngest(t.Context(), second); err != nil {
+		t.Fatalf("enqueue second: %v", err)
+	}
+	if got := waitForCount(ing, 2, 8*time.Second); got != 2 {
+		t.Errorf("ingest ran %d times after a second trigger, want 2: the finished task's id swallowed it", got)
+	}
+}
+
+// The same must hold after a run exhausts its retries and is archived: the next
+// trigger has to clear the archived id rather than be discarded by it.
+func TestReingestAfterArchivedRun(t *testing.T) {
+	rec := captureDefaultLogs(t)
+	failing := &failingIngestor{err: errors.New("permanent failure")}
+
+	client, err := queue.NewClient(redisURL, 0)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	defer func() {
+		if cerr := client.Close(); cerr != nil {
+			t.Logf("close client: %v", cerr)
+		}
+	}()
+
+	worker, err := queue.NewWorker(redisURL, 1, failing)
+	if err != nil {
+		t.Fatalf("new worker: %v", err)
+	}
+	if err := worker.Start(); err != nil {
+		t.Fatalf("start worker: %v", err)
+	}
+
+	job := &queue.IngestJob{InstallationID: 2, Owner: "acme", Name: "archived", Reason: "push"}
+	if err := client.EnqueueIngest(t.Context(), job); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+	if !waitFor(func() bool { return failing.attempts.Load() > 0 }, 10*time.Second) {
+		t.Fatal("ingest never attempted")
+	}
+	// Stop the worker so the task stays put instead of being retried mid-assert.
+	worker.Shutdown()
+
+	// Archive the task directly: waiting out five retries of asynq's default
+	// backoff would make this test minutes long.
+	insp := asynq.NewInspector(asynq.RedisClientOpt{Addr: strings.TrimPrefix(redisURL, "redis://")})
+	defer func() {
+		if cerr := insp.Close(); cerr != nil {
+			t.Logf("close inspector: %v", cerr)
+		}
+	}()
+	taskID := "ingest:acme/archived"
+	if err := insp.ArchiveTask("ingest", taskID); err != nil {
+		t.Fatalf("archive task: %v", err)
+	}
+	info, err := insp.GetTaskInfo("ingest", taskID)
+	if err != nil {
+		t.Fatalf("get task info: %v", err)
+	}
+	if info.State != asynq.TaskStateArchived {
+		t.Fatalf("task state = %v, want archived", info.State)
+	}
+
+	// The next trigger must clear the archived id rather than be swallowed by it.
+	if err := client.EnqueueIngest(t.Context(), job); err != nil {
+		t.Fatalf("enqueue after archive: %v", err)
+	}
+	after, err := insp.GetTaskInfo("ingest", taskID)
+	if err != nil {
+		t.Fatalf("get task info after re-enqueue: %v", err)
+	}
+	if after.State == asynq.TaskStateArchived {
+		t.Error("task is still archived: the trigger was swallowed instead of clearing it")
+	}
+	if len(rec.find("cleared a finished ingest task and re-enqueued")) == 0 {
+		t.Error("no log record explaining that the archived task was cleared")
 	}
 }
