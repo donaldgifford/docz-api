@@ -150,9 +150,9 @@ Kills F4: retry exhaustion must never silently eat future triggers.
 
 #### Tasks
 
-- [ ] Add an `*asynq.Inspector` to `queue.Client` (same parsed redis opts;
+- [x] Add an `*asynq.Inspector` to `queue.Client` (same parsed redis opts;
       close it in `Client.Close` via the existing `errors.Join`).
-- [ ] On `ErrTaskIDConflict`/`ErrDuplicateTask` in `EnqueueIngest`: call
+- [x] On `ErrTaskIDConflict`/`ErrDuplicateTask` in `EnqueueIngest`: call
       `Inspector.GetTaskInfo(queueName, taskID)`. State
       pending/scheduled/retry → today's coalesce (now Info, Phase 1). State
       **archived** → `DeleteTask` + re-enqueue once (single retry, no loop);
@@ -161,9 +161,9 @@ Kills F4: retry exhaustion must never silently eat future triggers.
       defers the mechanical fix). `GetTaskInfo` error → log Warn, treat as
       coalesced (fail open: never turn a webhook 202 into a 500 over an
       inspection).
-- [ ] Unit test the state-dispatch with a fake inspector seam (consumer-side
+- [x] Unit test the state-dispatch with a fake inspector seam (consumer-side
       interface, matching house style).
-- [ ] Integration test (`queue_integration_test.go`, real Redis): drive a
+- [x] Integration test (`queue_integration_test.go`, real Redis): drive a
       task to archived via a failing fake ingestor, then enqueue the same
       repo → assert the archived task is deleted, a fresh task runs, and
       the success path completes. Assert the pending-state coalesce still
@@ -176,6 +176,27 @@ Kills F4: retry exhaustion must never silently eat future triggers.
   explaining what happened.
 - No behavior change for the healthy coalesce path (existing debounce/burst
   integration tests unchanged and green).
+
+**Phase 2 complete (2026-08-24).** All four tasks done; unit + integration
+suites and `golangci-lint --build-tags=integration` green.
+
+**Scope grew during implementation.** Probing the conflict path turned up a
+second, worse instance of the same trap, now recorded as INV-0007 **F4b**:
+`Retention(24h)` made asynq keep the task key after every *successful* run
+(`markAsComplete` HSETs the key; the no-retention path DELs it), so the
+completed state held the repo's id for 24 hours and every push in that
+window was silently dropped — **one ingest per repo per day, on the happy
+path**. `TestReingestAfterSuccessfulRun` fails against the pre-fix code.
+
+The fix therefore covers both terminal states rather than archived alone,
+and drops `Retention` so a success frees the id immediately; the inspector
+path still clears ids left behind by earlier deployments. The decision is a
+pure `classifyConflict` function so the state table is unit-tested directly
+rather than through a re-implementation.
+
+`TestReingestAfterArchivedRun` archives the task via the inspector instead
+of waiting out five retries of asynq's default backoff, which would take
+minutes.
 
 ### Phase 3: Boot-time GitHub App credential self-check
 
