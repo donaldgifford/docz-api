@@ -92,7 +92,11 @@ func (c *Client) EnqueueIngest(ctx context.Context, job *IngestJob) error {
 	)
 	if err != nil {
 		if errors.Is(err, asynq.ErrTaskIDConflict) || errors.Is(err, asynq.ErrDuplicateTask) {
-			slog.Debug("ingest job coalesced: a pending job already covers this trigger",
+			// Info, not Debug: this branch also absorbs the active-window drop
+			// documented above, so it is the one place a trigger can legitimately
+			// go nowhere. It must be visible at the default log level.
+			slog.InfoContext(ctx,
+				"ingest job coalesced into an existing task; dropped if that task is already running",
 				"repo", job.repoLabel(), "reason", job.Reason)
 			return nil
 		}
