@@ -39,6 +39,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ### Testing
 
 - *(queue)* Prove failure logging against real Redis
+- *(session)* Prove Lookup labels a corrupt session, not just that the gate handles one
 
 ## [0.5.1] - 2026-08-11
 
