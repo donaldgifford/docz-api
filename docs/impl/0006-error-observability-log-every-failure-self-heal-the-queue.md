@@ -320,13 +320,13 @@ GitHub App credentials. Loud opt-in, documented as such.
 
 #### Tasks
 
-- [ ] `internal/config`: accept the literal `none` in `AUTH_PROVIDERS`
+- [x] `internal/config`: accept the literal `none` in `AUTH_PROVIDERS`
       (OQ-3 spelling). `validate.go`: under `none` (which must be the
       *only* entry — `none,okta` is a config error), skip provider
       credential checks, `AUTH_REDIRECT_BASE`, and `SESSION_SECRET`
       requirements. Add an `AuthDisabled()` helper alongside
       `AuthEnabled`.
-- [ ] `cmd/docz-api`: when disabled, `buildAuthProviders` returns an empty
+- [x] `cmd/docz-api`: when disabled, `buildAuthProviders` returns an empty
       registry; `runServer` swaps `session.Middleware` for an
       anonymous-identity injector (synthetic `session.Session` with
       provider `none`, subject `anonymous`, injected via the same ctx key
@@ -335,21 +335,21 @@ GitHub App credentials. Loud opt-in, documented as such.
       `/auth/login`/`/auth/callback` routes — 404, the absent-route
       precedent from search; OQ-4). Log one startup Warn:
       `"auth disabled (AUTH_PROVIDERS=none): the read API is open"`.
-- [ ] Session store: still constructed (Redis is required anyway for the
+- [x] Session store: still constructed (Redis is required anyway for the
       queue) but the cookie path is never exercised; logout becomes a no-op
       revoke on the synthetic id — verify it 200s harmlessly rather than
       500s.
-- [ ] Chart: gate the `required` on `config.authRedirectBase` (and the
+- [x] Chart: gate the `required` on `config.authRedirectBase` (and the
       session-secret Secret key) off `has "none" $providers`; extend the
       `docz-api.authProviders` helper docs; `values.yaml` comment block +
       README.md.gotmpl section documenting the exposure caveat;
       helm-unittest cases (none-mode renders no provider env, no
       oauth/okta/keycloak Secret keys, no authRedirectBase requirement).
-- [ ] Contract test: a none-mode handler variant asserting `/api/v1` reads
+- [x] Contract test: a none-mode handler variant asserting `/api/v1` reads
       succeed with no cookie and `/api/v1/auth/session` returns the
       synthetic identity (spec shape unchanged — `sessionDTO` already fits;
       no spec version bump expected, confirm during implementation).
-- [ ] Docs: `deploy/README.md` first-setup section rewritten to lead with
+- [x] Docs: `deploy/README.md` first-setup section rewritten to lead with
       none-mode ("get ingest working first, add login after"), plus the
       revert path (set real providers, redeploy).
 
@@ -366,6 +366,42 @@ GitHub App credentials. Loud opt-in, documented as such.
 - The docz-site, pointed at a none-mode API, renders docs with no login
   panel (manual smoke; the SPA's login UI is 401-driven and none-mode
   never 401s).
+
+**Phase 5 complete (2026-08-25).** All six tasks done; `just lint` (0 issues),
+the full unit suite, `just helm-lint` / `helm-template` / `helm-unittest`
+(80 tests) and `just lint-openapi` (100/100) all green. Chart bumped to
+**0.5.0**, spec to **1.2.1** (editorial — see below).
+
+The one success criterion that cannot be proven here is the docz-site smoke
+("no login panel against a none-mode API") — it needs a browser against a
+running pair. It is carried into Phase 6's live verification rather than
+claimed.
+
+Implementation notes beyond the plan:
+
+- `AuthDisabled()` requires `none` to be the **only** entry; `none,github` is
+  a config error naming the conflict, not a silent precedence rule. Two
+  incompatible shapes cannot both be described at once, and guessing which
+  one the operator meant is exactly the kind of ambiguity that produces a
+  "why is my API open?" incident.
+- `session.AnonymousMiddleware` lives in `internal/session` because the
+  context key is unexported there — which is the point: the synthetic session
+  goes in through the *same* key as a real one, so `authorize`, every handler,
+  and `/api/v1/auth/session` need no no-auth branch. The anonymous identity is
+  `provider "none" / subject "anonymous"`, and its session id is never in
+  Redis, so logout is a harmless no-op delete of an absent key (verified, not
+  assumed).
+- **The spec gained an editorial note** (`1.2.1`) rather than staying silent.
+  A generated client works against either mode — only the auth requirement
+  changes, never a request or response shape — and saying so in the
+  `sessionCookie` description is what makes that safe to rely on. No version
+  bump beyond patch: nothing about the wire contract changed.
+- The chart gates on a new `docz-api.authDisabled` helper so both the
+  Deployment env and the Secret key list stay in one decision. Every surface
+  that documents none-mode (values.yaml, chart README, `deploy/README.md`,
+  `.env.production.example`) also states the exposure — an open read API is
+  the whole trade, and it should not be discoverable only by reading
+  templates.
 
 ### Phase 6: Deliberate-failure verification, deploy, close-out
 
