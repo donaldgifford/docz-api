@@ -244,6 +244,22 @@ env and no okta-client-secret key.
 {{- end -}}
 
 {{/*
+Whether site login is disabled entirely (config.authProviders: "none").
+Renders "true" when so, and empty otherwise, so it reads as a boolean:
+
+  {{- if not (include "docz-api.authDisabled" .) }}
+
+Under none-mode the API serves every request as a synthetic anonymous identity
+and mounts no login routes, so the redirect base, session secret, and every
+provider credential stop being required. It is the first-setup shape — get
+GitHub App ingestion working before configuring a login provider — and it
+leaves the read API open to anyone who can reach the Service.
+*/}}
+{{- define "docz-api.authDisabled" -}}
+{{- if has "none" (include "docz-api.authProviders" . | fromJsonArray) -}}true{{- end -}}
+{{- end -}}
+
+{{/*
 Name of the Secret holding tailscaled's node state (TS_KUBE_SECRET).
 Defaults to <fullname>-tailscale-state; the sidecar creates it itself on
 first run using the Role in tailscale-rbac.yaml.
