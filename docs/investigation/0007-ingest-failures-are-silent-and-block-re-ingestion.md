@@ -30,6 +30,7 @@ created: 2026-08-21
   - [F7 — The silent-sink pattern recurs at four more operational choke points](#f7--the-silent-sink-pattern-recurs-at-four-more-operational-choke-points)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
+  - [Status: implemented (2026-08-25)](#status-implemented-2026-08-25)
 - [Recovery runbook (as-is, no code changes)](#recovery-runbook-as-is-no-code-changes)
 - [Open questions](#open-questions)
 - [References](#references)
@@ -91,7 +92,7 @@ with the error-handling conventions (F7 — full sweep of `internal/` +
 ## Environment
 
 | Component | Version / Value |
-|-----------|----------------|
+| --------- | --------------- |
 | asynq | `v0.26.0` (read from the module cache) |
 | queue name / task type / task id | `ingest` / `ingest:repo` / `ingest:<owner>/<name>` |
 | enqueue options | `TaskID` + `ProcessIn(debounce)` + `MaxRetry(5)` + `Retention(24h)` |
@@ -360,6 +361,26 @@ Code fixes, in value order — all small:
    chart's `authRedirectBase` `required`, and document it as a loud opt-in
    for internal/first-boot deployments.
 
+### Status: implemented (2026-08-25)
+
+All six recommendations landed in IMPL-0006 (branch `feat/impl-0006`) and
+were verified live against the local compose stack, **reading only structured
+logs** — Valkey was never opened:
+
+| # | Fix | Live evidence |
+| - | --- | ------------- |
+| 1 | `ErrorHandler` + comment fix | 6 x `ingest job attempt failed` naming the real cause (`404 Not Found` on the repo fetch), with `retried` 0 through 5 |
+| 2 | Boot App-auth self-check | `github app authenticated app_slug=donaldgifford-docz-api` at every start |
+| 3 | Un-swallow the finished task | `cleared a finished ingest task and re-enqueued cleared_state=archived` on the next trigger after exhaustion |
+| 4 | The four mute HTTP sinks | unit-tested; each sink emits exactly one record at its intended level |
+| 5 | `asynq.Config.Logger` + Info coalesce | `Retry exhausted ...` arrives as WARN with `component=asynq`; `ingest job coalesced into an existing task state=active` / `=scheduled` |
+| 6 | `AUTH_PROVIDERS=none` | contract test serves `/api/v1` with no cookie; chart renders no login env or Secret keys |
+
+The drill reproduced the reported production symptom exactly — the same
+`Retry exhausted` WARN the operator saw — except that it is now preceded by
+six ERROR lines naming the cause, and the next trigger self-heals instead of
+being swallowed. Every one of the 33 log lines parsed under `jq -e`.
+
 ## Recovery runbook (as-is, no code changes)
 
 1. Read the stored error: `asynq task ls --queue=ingest --state=archived`
@@ -391,21 +412,35 @@ Code fixes, in value order — all small:
   explains the reported symptom without any credential, egress, or config
   fault. The archived task's stored error should still be read to confirm,
   but the leading hypothesis is now F4b rather than any original suspect.
+  **Still open (2026-08-25):** answering it needs the fixed binary running in
+  EKS and one re-trigger of the failing repo — with fix 1 in place the cause
+  now appears in `kubectl logs` directly. IMPL-0006 Phase 6 carries that step;
+  it is the one part of this investigation that cannot be closed locally.
 - **OQ-2** — should the boot self-check fail startup or warn-only?
   Fail-fast matches the OIDC-discovery precedent (a bad issuer fails the
   boot); warn-only keeps the read API serving when only ingest is broken.
+  **Answered (IMPL-0006 OQ-1a):** fail startup, but only on a rejection GitHub
+  actually issued — an unreachable GitHub warns and continues, so an outage
+  during a restart cannot crash-loop an otherwise healthy API.
 - **OQ-3** — fix 3's mechanism: enqueue-side `GetTaskInfo`+delete, vs a
   worker-side `DeleteTask` after archiving, vs shortening the archive TTL.
   Enqueue-side is the least magical and keeps the decision at the choke
   point that owns the TaskID scheme.
+  **Answered:** enqueue-side `GetTaskInfo` + `DeleteTask`, as reasoned here.
 - **OQ-4** — spelling of the no-auth switch: `AUTH_PROVIDERS=none` (one
   knob, reads naturally in the existing enum) vs a separate
   `AUTH_DISABLED=true`. Also: should `/auth/login` 404 or 503 in that
   mode? `none`-in-the-existing-knob is the leading option.
+  **Answered:** `AUTH_PROVIDERS=none`, and `/auth/login` is simply not mounted
+  (404), matching the absent-route precedent from search.
 - **OQ-5** — the active-window drop (`client.go:70-73`): does it get a
   real fix (track a dirty flag / re-enqueue after run completion) or just
   the louder log from fix 5? A push landing mid-ingest is rare but is a
   genuine lost-trigger path independent of F4.
+  **Partly addressed:** IMPL-0006 shipped the louder log — a mid-ingest
+  coalesce now logs at Info with `state=active`, so the drop is at least
+  visible. The real fix (dirty flag / re-enqueue on completion) is still open
+  and is deliberately out of IMPL-0006's scope.
 
 ## References
 

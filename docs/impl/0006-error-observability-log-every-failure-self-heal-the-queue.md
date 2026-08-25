@@ -1,7 +1,7 @@
 ---
 id: IMPL-0006
 title: "Error observability: log every failure, self-heal the queue, optional no-auth mode"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-08-22
 ---
@@ -411,23 +411,23 @@ assuming it.
 
 #### Tasks
 
-- [ ] Local deliberate-failure drill (compose stack): onboard a repo whose
+- [x] Local deliberate-failure drill (compose stack): onboard a repo whose
       fetch **must** fail (no `.docz.yaml`), watch `just run` logs only:
       confirm N per-attempt error lines with the real cause, the terminal
       archive WARN, and — after "fixing" the repo — a next trigger that
       self-heals through the Phase 2 path. **No Redis inspection allowed**;
       if any step needs it, that's a Phase 1/2 bug to fix before shipping.
-- [ ] Repeat the drill with `LOG_FORMAT=json` piped through `jq -e` to
+- [x] Repeat the drill with `LOG_FORMAT=json` piped through `jq -e` to
       prove every queue-subsystem line parses (Phase 1's second criterion,
       end to end).
-- [ ] Release: minor version bump (new env mode + logging surface), chart
+- [x] Release: minor version bump (new env mode + logging surface), chart
       version bump for the Phase 5 template changes; `pr-semver` label
       `minor`.
-- [ ] EKS redeploy of the new image + chart; re-trigger the INV-0007
+- [ ] **deferred - human required** — EKS redeploy of the new image + chart; re-trigger the INV-0007
       failing repo; **close INV-0007 OQ-1 from the logs** — record the
       actual root cause in INV-0007 (edit the OQ, note "answered via the
       Phase 6 deploy").
-- [ ] Close-out: mark INV-0007 recommendations 1–6 as implemented in the
+- [x] Close-out: mark INV-0007 recommendations 1–6 as implemented in the
       INV; update CLAUDE.md (new conventions: asynq Logger/ErrorHandler
       contract, SelfCheck at boot, none-mode); `docz update`.
 
@@ -440,6 +440,46 @@ assuming it.
   the stored task record.
 - CI green, release published, EKS running the new version with the
   failing repo ingested (or its genuine blocker named in the logs).
+
+**Phase 6 complete except the EKS redeploy (2026-08-25).** Everything that
+can be proven without cluster access is proven; the one remaining task is
+marked `deferred - human required` above.
+
+**The drill (both tasks 1 and 2, run as one `LOG_FORMAT=json` session).**
+Local compose stack (real Postgres/Redis/Meilisearch) plus the real
+`donaldgifford-docz-api` GitHub App. `-onboard
+donaldgifford/no-such-docz-repo@145915803` forced a permanent fetch failure.
+Reading **only** `/tmp/drill.log` — Valkey was never opened — the full
+lifecycle was reconstructed:
+
+- boot: `github app authenticated app_slug=donaldgifford-docz-api` (fix 2)
+- 6 x `ingest job attempt failed` at ERROR, `retried` 0→5, each naming the
+  real cause: `GET https://api.github.com/repos/donaldgifford/no-such-docz-repo:
+  404 Not Found` (fix 1)
+- `WARN Retry exhausted for task id=ingest:donaldgifford/no-such-docz-repo`
+  with `component=asynq` — the operator's original production line, now
+  preceded by six lines that say *why* (fix 5)
+- next trigger: `cleared a finished ingest task and re-enqueued
+  cleared_state=archived` — the swallow is gone (fix 3)
+- a healthy repo ingests: `ingest job complete docs_upserted=16`
+- a 5-trigger burst: `ingest job enqueued` once, four
+  `ingest job coalesced into an existing task` at **Info** carrying the live
+  `state` (`active` / `scheduled`) (fix 5 / F7.6)
+
+`jq -e . /tmp/drill.log` succeeded on all 33 lines, so every queue-subsystem
+line — including asynq's own internals — parses as structured JSON.
+
+**Release.** Chart `0.5.0` (Phase 5 template changes) and OpenAPI `1.2.1`
+(editorial). The binary version comes from the release tag, so the `minor`
+bump is the tag itself plus the `minor` semver label on the PR — both are
+release-time actions, not repo edits.
+
+**What the EKS step is still for.** INV-0007 OQ-1 (the actual root cause of
+the triggering production failure) is the one question that cannot be
+answered locally: it needs the fixed binary running in the cluster and one
+re-trigger of the failing repo. With fix 1 in place the cause now appears
+directly in `kubectl logs`. The same deploy covers the docz-site none-mode
+smoke carried over from Phase 5.
 
 ## File Changes
 
