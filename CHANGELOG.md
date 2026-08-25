@@ -18,6 +18,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(chart)* Make the Tailscale sidecar restricted-compliant and stateful ([#17](https://github.com/donaldgifford/docz-api/issues/17))
 - *(queue)* Stop finished tasks from swallowing later ingest triggers
 - *(observability)* Log every HTTP error sink (IMPL-0006 Phase 4)
+- Five defects found reviewing the IMPL-0006 branch
 
 ### Documentation
 
