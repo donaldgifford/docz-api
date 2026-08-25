@@ -469,6 +469,46 @@ lifecycle was reconstructed:
 `jq -e . /tmp/drill.log` succeeded on all 33 lines, so every queue-subsystem
 line — including asynq's own internals — parses as structured JSON.
 
+**Post-phase review (2026-08-25).** Two independent reviewers went over the
+whole branch diff. They found five real defects, all now fixed with regression
+tests; both reviewers independently found the first one, which is why it is
+listed first:
+
+1. **The chart's `authDisabled` helper used `has "none"`** (membership) where
+   the binary requires `none` to be the *only* entry. `authProviders:
+   "none,github"` therefore rendered a manifest that dropped `SESSION_SECRET`
+   and `AUTH_REDIRECT_BASE` while still emitting `GITHUB_OAUTH_*` — it
+   installed cleanly and then crash-looped on the binary's own validation. The
+   helper now `fail`s at render time with the same message, which is the house
+   rule (catch it at `helm install`, not in CrashLoopBackOff).
+2. **`isCredentialRejection` classified any 4xx as permanent.** go-github only
+   produces a typed `*RateLimitError` when the response carries the matching
+   headers, so a `429` from a proxy, CDN, or GHES front end arrived as a plain
+   `*ErrorResponse` and failed startup — precisely the crash-loop the boot
+   check is supposed to prevent. `408` and `429` are now excluded by status
+   code.
+3. **`DeleteTask` returning `ErrTaskNotFound` aborted the clear-and-retry.**
+   Two pushes seconds apart both classify `clearAndRetry`; the loser found the
+   task already gone and answered 500. Because `RecordDelivery` had already
+   recorded the delivery id, GitHub's redelivery was deduped to a no-op rather
+   than retrying. "Already gone" is the state this path wants, so it now falls
+   through to the re-enqueue.
+4. **An undecodable session was a 503 dead end.** `Lookup` wraps a JSON decode
+   failure, which the gate treated as an outage — but `/api/v1/auth/logout`
+   sits behind that same gate, and docz-site only offers login on a 401, so the
+   holder could never recover. A new `ErrSessionCorrupt` sentinel keeps that
+   case on the 401 path (logged at Warn); only a backend that cannot answer
+   gets the 503.
+5. **`resolveTaskIDConflict` dereferenced a nil `TaskInfo`** that
+   `classifyConflict` explicitly accepts. Unreachable through the real
+   `*asynq.Inspector`, but the seam exists to be swapped, and the test suite
+   pins `(nil, nil)` as supported.
+
+**Integration suites.** `just test-integration` (the `//go:build integration`
+tests, which CI does not run) is green across all 16 packages, including the
+testcontainers-backed `queue` (real Redis — debounce, drain, and the new
+archived-task self-heal), `store`, `search`, and `e2e` suites.
+
 **Release.** Chart `0.5.0` (Phase 5 template changes) and OpenAPI `1.2.1`
 (editorial). The binary version comes from the release tag, so the `minor`
 bump is the tag itself plus the `minor` semver label on the PR — both are

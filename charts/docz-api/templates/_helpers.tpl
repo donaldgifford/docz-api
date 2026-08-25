@@ -249,6 +249,11 @@ Renders "true" when so, and empty otherwise, so it reads as a boolean:
 
   {{- if not (include "docz-api.authDisabled" .) }}
 
+"none" must be the only entry, mirroring config.AuthDisabled() in the binary —
+otherwise the chart would drop the session secret and redirect base while still
+rendering a provider's env, producing a manifest that installs cleanly and then
+crash-loops. The render fails instead.
+
 Under none-mode the API serves every request as a synthetic anonymous identity
 and mounts no login routes, so the redirect base, session secret, and every
 provider credential stop being required. It is the first-setup shape — get
@@ -256,7 +261,13 @@ GitHub App ingestion working before configuring a login provider — and it
 leaves the read API open to anyone who can reach the Service.
 */}}
 {{- define "docz-api.authDisabled" -}}
-{{- if has "none" (include "docz-api.authProviders" . | fromJsonArray) -}}true{{- end -}}
+{{- $providers := include "docz-api.authProviders" . | fromJsonArray -}}
+{{- if has "none" $providers -}}
+{{- if gt (len $providers) 1 -}}
+{{- fail "config.authProviders: \"none\" must be the only entry when present" -}}
+{{- end -}}
+true
+{{- end -}}
 {{- end -}}
 
 {{/*

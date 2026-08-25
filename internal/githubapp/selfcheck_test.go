@@ -132,3 +132,25 @@ func TestSelfCheckRejectsMalformedPrivateKey(t *testing.T) {
 		t.Errorf("err = %v, want it to wrap ErrCredentialsRejected", err)
 	}
 }
+
+// A 429 without go-github's rate-limit markers (a proxy, a CDN, or a GHES front
+// end) still means "try again later". Classifying it as a rejection would
+// crash-loop a deploy whose credentials are fine — the exact outcome SelfCheck
+// exists to avoid.
+func TestSelfCheckTransientStatusIsNotARejection(t *testing.T) {
+	for _, status := range []int{http.StatusRequestTimeout, http.StatusTooManyRequests} {
+		gh := newSelfCheckClient(t, selfCheckTransport{
+			status: status,
+			body:   `<html>too many requests</html>`,
+		})
+
+		_, err := selfCheck(t.Context(), gh)
+		if err == nil {
+			t.Fatalf("status %d: selfCheck succeeded, want an error", status)
+		}
+		if errors.Is(err, ErrCredentialsRejected) {
+			t.Errorf("status %d: err = %v, want it NOT classified as a credential rejection",
+				status, err)
+		}
+	}
+}

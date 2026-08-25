@@ -145,11 +145,14 @@ func (c *Client) resolveTaskIDConflict(
 	ctx context.Context, job *IngestJob, payload []byte, taskID string,
 ) error {
 	info, ierr := c.inspector.GetTaskInfo(queueName, taskID)
-	if classifyConflict(info, ierr) == coalesceTrigger {
+	if classifyConflict(info, ierr) == coalesceTrigger || info == nil {
 		// Info, not Debug: this branch also absorbs the active-window drop
 		// documented on EnqueueIngest, so it is the one place a trigger can
 		// legitimately go nowhere. It must be visible at the default log level.
-		if ierr != nil {
+		// info may be nil without an error only from a stub inspector; the real
+		// *asynq.Inspector always pairs one with the other. Guarding here keeps
+		// this caller as forgiving as classifyConflict already is.
+		if ierr != nil || info == nil {
 			slog.WarnContext(ctx,
 				"could not inspect the conflicting ingest task; treating as coalesced",
 				"repo", job.repoLabel(), "reason", job.Reason, "err", ierr)
@@ -160,7 +163,13 @@ func (c *Client) resolveTaskIDConflict(
 		return nil
 	}
 
-	if derr := c.inspector.DeleteTask(queueName, taskID); derr != nil {
+	// ErrTaskNotFound means a concurrent trigger cleared it first — that is the
+	// state this path is trying to reach, so it is success, not failure. Without
+	// this, two pushes seconds apart make the loser answer 500, and because the
+	// delivery id was already recorded, GitHub's redelivery is deduped to a
+	// no-op instead of retrying.
+	if derr := c.inspector.DeleteTask(queueName, taskID); derr != nil &&
+		!errors.Is(derr, asynq.ErrTaskNotFound) {
 		return fmt.Errorf("clear finished ingest task for %s: %w", job.repoLabel(), derr)
 	}
 	// Re-enqueued exactly once: if this conflicts again another enqueue won the

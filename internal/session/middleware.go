@@ -34,16 +34,23 @@ func Middleware(store lookuper) func(http.Handler) http.Handler {
 			}
 			sess, err := store.Lookup(r.Context(), cookie.Value)
 			if err != nil {
-				// A missing session is ordinary churn (expiry, logout, a stale
-				// cookie) and stays a quiet 401. Anything else — Redis
-				// unreachable, a session that will not decode — is an outage,
-				// not a verdict on the caller: answering 401 would log every
-				// user out and leave no trace of why (INV-0007 F7.2).
-				if !errors.Is(err, ErrSessionNotFound) {
+				if !isUnusableSession(err) {
+					// The backend could not answer at all — Redis unreachable.
+					// That is an outage, not a verdict on the caller: answering
+					// 401 would log every user out and leave no trace of why
+					// (INV-0007 F7.2).
 					slog.ErrorContext(r.Context(), "session lookup failed",
 						"err", err, "path", r.URL.Path)
 					writeSessionUnavailable(w)
 					return
+				}
+				if errors.Is(err, ErrSessionCorrupt) {
+					// Worth a log — it means stored sessions stopped matching
+					// the code that reads them — but still a 401, because
+					// logging in again is the only way out and /auth/logout
+					// sits behind this very gate.
+					slog.WarnContext(r.Context(), "discarding an undecodable session",
+						"err", err, "path", r.URL.Path)
 				}
 				writeUnauthorized(w)
 				return
@@ -82,6 +89,14 @@ func AnonymousMiddleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, sess)))
 		})
 	}
+}
+
+// isUnusableSession reports whether err means "this caller has no valid
+// session" — as opposed to "the session backend could not answer". Only the
+// latter warrants a 503; everything else is a 401 the holder can recover from
+// by logging in again.
+func isUnusableSession(err error) bool {
+	return errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrSessionCorrupt)
 }
 
 // FromContext returns the Session injected by Middleware and whether one was

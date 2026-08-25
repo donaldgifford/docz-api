@@ -379,3 +379,14 @@ tests:
                 name: RELEASE-NAME-docz-api
                 key: app-id
 
+  - it: fails the render when none is combined with a real provider
+    set:
+      config:
+        authProviders: "none,github"
+    asserts:
+      # Without this the chart would drop SESSION_SECRET and AUTH_REDIRECT_BASE
+      # while still rendering GITHUB_OAUTH_*, installing cleanly and then
+      # crash-looping on the binary's own validation.
+      - failedTemplate:
+          errorMessage: 'config.authProviders: "none" must be the only entry when present'
+

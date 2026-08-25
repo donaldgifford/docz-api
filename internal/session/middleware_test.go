@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -163,5 +164,36 @@ func TestMiddlewareMissingSessionStaysQuiet401(t *testing.T) {
 	}
 	if got := rec.countAtLevel(slog.LevelError); got != 0 {
 		t.Errorf("error records = %d, want 0 for an ordinary missing session", got)
+	}
+}
+
+// A stored session that will not decode is per-cookie poison, not an outage:
+// the backend answered fine. It must stay a 401 so the holder can log in again
+// — /api/v1/auth/logout sits behind this same gate, so a 503 here would be a
+// dead end with no way out, and docz-site only offers login on a 401.
+func TestMiddlewareCorruptSessionIs401AndLogged(t *testing.T) {
+	rec := captureSlog(t)
+	store := &fakeLookuper{
+		id:  "good-id",
+		err: fmt.Errorf("%w: unexpected end of JSON input", ErrSessionCorrupt),
+	}
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/repos", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: "poisoned"})
+	w := httptest.NewRecorder()
+
+	Middleware(store)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("next handler ran with an undecodable session")
+	})).ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d so the holder can log in again",
+			w.Code, http.StatusUnauthorized)
+	}
+	if got := rec.countAtLevel(slog.LevelWarn); got != 1 {
+		t.Errorf("warn records = %d, want 1", got)
+	}
+	if got := rec.countAtLevel(slog.LevelError); got != 0 {
+		t.Errorf("error records = %d, want 0 (this is not an outage)", got)
 	}
 }

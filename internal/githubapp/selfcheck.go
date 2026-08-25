@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -78,6 +79,19 @@ func selfCheck(ctx context.Context, gh *github.Client) (*AppIdentity, error) {
 	return &AppIdentity{ID: app.GetID(), Slug: app.GetSlug(), Name: app.GetName()}, nil
 }
 
+// transientStatuses are 4xx codes that mean "try again later", not "your
+// credentials are wrong". They must never fail startup: a throttled or timed-out
+// boot would otherwise crash-loop a deploy whose credentials are perfectly good.
+//
+// go-github only produces a typed *RateLimitError / *AbuseRateLimitError when
+// the response carries the matching headers or documentation_url, so a 429 from
+// a proxy, a CDN, or a GHES front end arrives as a plain *ErrorResponse and has
+// to be caught by status code.
+var transientStatuses = []int{
+	http.StatusRequestTimeout,
+	http.StatusTooManyRequests,
+}
+
 // isCredentialRejection reports whether GitHub refused the credentials, as
 // opposed to being unreachable or throttling us.
 //
@@ -95,5 +109,8 @@ func isCredentialRejection(err error) bool {
 		return false
 	}
 	code := apiErr.Response.StatusCode
+	if slices.Contains(transientStatuses, code) {
+		return false
+	}
 	return code >= http.StatusBadRequest && code < http.StatusInternalServerError
 }

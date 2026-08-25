@@ -2,6 +2,7 @@ package queue
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/hibiken/asynq"
@@ -138,5 +139,70 @@ func TestResolveConflictDeletesTerminalTask(t *testing.T) {
 	}
 	if want := "ingest:acme/docs"; insp.deletedID != want {
 		t.Errorf("deleted task id %q, want %q", insp.deletedID, want)
+	}
+}
+
+// deadAsynqClient returns an asynq client pointed at a closed port, so Enqueue
+// fails fast with a connection error. That is enough to tell *how far*
+// resolveTaskIDConflict got: an error naming the re-enqueue proves it moved
+// past the delete step rather than aborting there.
+func deadAsynqClient(t *testing.T) *asynq.Client {
+	t.Helper()
+	c := asynq.NewClient(asynq.RedisClientOpt{Addr: "127.0.0.1:1"})
+	t.Cleanup(func() { _ = c.Close() })
+	return c
+}
+
+// Two triggers for the same repo can both classify clearAndRetry; the loser's
+// DeleteTask finds the task already gone. That is the state this path is trying
+// to reach, so it must continue to the re-enqueue. Aborting there made the
+// loser answer 500 — and since the delivery id was already recorded, GitHub's
+// redelivery would be deduped to a no-op instead of retrying.
+func TestResolveConflictToleratesAlreadyDeletedTask(t *testing.T) {
+	insp := &fakeInspector{
+		info:      &asynq.TaskInfo{State: asynq.TaskStateArchived},
+		deleteErr: asynq.ErrTaskNotFound,
+	}
+	c := &Client{asynq: deadAsynqClient(t), inspector: insp}
+	job := &IngestJob{Owner: "acme", Name: "docs", Reason: "push"}
+
+	err := c.resolveTaskIDConflict(t.Context(), job, []byte("{}"), ingestTaskID(job))
+	if err == nil {
+		t.Fatal("resolveTaskIDConflict succeeded against a dead redis, want an error")
+	}
+	if strings.Contains(err.Error(), "clear finished ingest task") {
+		t.Errorf("err = %v, want it to move past the delete step, not abort there", err)
+	}
+	if !strings.Contains(err.Error(), "re-enqueue") {
+		t.Errorf("err = %v, want it to name the re-enqueue step", err)
+	}
+}
+
+// A genuine delete failure must still abort — tolerating ErrTaskNotFound should
+// not turn into tolerating everything.
+func TestResolveConflictFailsOnRealDeleteError(t *testing.T) {
+	insp := &fakeInspector{
+		info:      &asynq.TaskInfo{State: asynq.TaskStateArchived},
+		deleteErr: errors.New("redis: connection refused"),
+	}
+	c := &Client{asynq: deadAsynqClient(t), inspector: insp}
+	job := &IngestJob{Owner: "acme", Name: "docs", Reason: "push"}
+
+	err := c.resolveTaskIDConflict(t.Context(), job, []byte("{}"), ingestTaskID(job))
+	if err == nil || !strings.Contains(err.Error(), "clear finished ingest task") {
+		t.Errorf("err = %v, want it to abort naming the clear step", err)
+	}
+}
+
+// classifyConflict accepts a nil TaskInfo, so its caller must too: a stub
+// inspector returning (nil, nil) should coalesce, not panic. The real
+// *asynq.Inspector never does this, which is exactly why the divergence would
+// go unnoticed until someone swapped the seam.
+func TestResolveConflictSurvivesNilTaskInfo(t *testing.T) {
+	c := &Client{asynq: deadAsynqClient(t), inspector: &fakeInspector{}}
+	job := &IngestJob{Owner: "acme", Name: "docs", Reason: "push"}
+
+	if err := c.resolveTaskIDConflict(t.Context(), job, []byte("{}"), ingestTaskID(job)); err != nil {
+		t.Errorf("resolveTaskIDConflict = %v, want nil (treated as coalesced)", err)
 	}
 }
