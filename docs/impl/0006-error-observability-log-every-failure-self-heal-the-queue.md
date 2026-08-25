@@ -519,6 +519,19 @@ is folded into item 2 above. It also caught that the corrupt-session test
 built its error with a single `%w` while production uses two — a test weaker
 than the code it guards, now pinned to the real shape.
 
+Each of the four fixes with a new test was then proven by reverting the
+production change and confirming the test actually fails — a test that passes
+against the broken code proves nothing. All four failed as intended. That
+exercise found one more gap worth recording: the corrupt-session fix has two
+halves, and reverting the **producer** half alone (`Store.Lookup` no longer
+labelling the error) left the whole `internal/session` package green, because
+the middleware test injects the sentinel itself through a fake. A refactor of
+`Lookup`'s error wrapping would therefore have pushed corrupt sessions back
+onto the 503 dead end with a fully passing suite.
+`TestLookupCorruptValueIsLabelled` (integration, real Redis: seed a non-JSON
+value, assert `ErrSessionCorrupt` and *not* `ErrSessionNotFound`) closes it,
+and was itself verified by the same revert drill.
+
 **Integration suites.** `just test-integration` (the `//go:build integration`
 tests, which CI does not run) is green across all 16 packages, including the
 testcontainers-backed `queue` (real Redis — debounce, drain, and the new
