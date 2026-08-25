@@ -41,6 +41,37 @@ docker compose ps
 The service applies database migrations automatically on startup, so there is no
 separate migration step.
 
+## First setup: get ingest working before login
+
+A first deploy has to get two independent credential sets right at once — the
+GitHub App and a login provider — and a failure in either looks identical from
+the outside: no docs. Start with login turned off so the only thing that can be
+wrong is the GitHub App.
+
+Set `AUTH_PROVIDERS=none` in `.env.production` and leave `SESSION_SECRET`,
+`AUTH_REDIRECT_BASE`, and every `*_CLIENT_ID`/`*_CLIENT_SECRET` unset. The
+service boots, logs a warning that auth is disabled, serves every request as a
+synthetic anonymous identity, and mounts no `/auth/login` or `/auth/callback`
+route. `"none"` must be the only entry — pairing it with a real provider is a
+config error, not a precedence rule.
+
+Now verify ingestion end to end:
+
+```sh
+docker compose logs -f docz-api        # expect one "github app authenticated" line
+curl -s localhost:8080/readyz          # postgres, redis, meilisearch all ok
+curl -s localhost:8080/api/v1/repos    # your onboarded repos, no cookie needed
+```
+
+**This leaves the read API open to anyone who can reach it.** Use it on a
+private network or a local stack, never on a public endpoint.
+
+When ingestion is proven, add login: set `AUTH_PROVIDERS` to your provider(s),
+fill in `SESSION_SECRET`, `AUTH_REDIRECT_BASE`, and that provider's credentials
+per the sections below, and redeploy. Nothing else changes — the API surface,
+routes, and response shapes are identical in both modes, so a docz-site pointed
+at a none-mode API keeps working unmodified once login is on.
+
 ## Configuration and secrets
 
 All configuration is read from the environment. `compose.yaml` loads
