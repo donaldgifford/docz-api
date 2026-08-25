@@ -145,19 +145,20 @@ func (c *Client) resolveTaskIDConflict(
 	ctx context.Context, job *IngestJob, payload []byte, taskID string,
 ) error {
 	info, ierr := c.inspector.GetTaskInfo(queueName, taskID)
-	if classifyConflict(info, ierr) == coalesceTrigger || info == nil {
-		// Info, not Debug: this branch also absorbs the active-window drop
-		// documented on EnqueueIngest, so it is the one place a trigger can
-		// legitimately go nowhere. It must be visible at the default log level.
-		// info may be nil without an error only from a stub inspector; the real
-		// *asynq.Inspector always pairs one with the other. Guarding here keeps
-		// this caller as forgiving as classifyConflict already is.
+	if classifyConflict(info, ierr) == coalesceTrigger {
+		// classifyConflict already folds a nil info into coalescing, so this
+		// branch must tolerate one: the real *asynq.Inspector always pairs a nil
+		// info with an error, but the seam exists to be swapped and info is
+		// dereferenced just below.
 		if ierr != nil || info == nil {
 			slog.WarnContext(ctx,
 				"could not inspect the conflicting ingest task; treating as coalesced",
 				"repo", job.repoLabel(), "reason", job.Reason, "err", ierr)
 			return nil
 		}
+		// Info, not Debug: this branch also absorbs the active-window drop
+		// documented on EnqueueIngest, so it is the one place a trigger can
+		// legitimately go nowhere. It must be visible at the default log level.
 		slog.InfoContext(ctx, "ingest job coalesced into an existing task",
 			"repo", job.repoLabel(), "reason", job.Reason, "state", info.State.String())
 		return nil
