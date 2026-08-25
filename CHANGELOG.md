@@ -5,18 +5,34 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 ## [unreleased]
 
+### Features
+
+- *(queue)* Route asynq diagnostics and failed attempts into slog
+- *(githubapp)* Verify App credentials at startup
+- *(config)* Accept AUTH_PROVIDERS=none for a login-free first setup
+- *(auth)* Serve an anonymous identity under AUTH_PROVIDERS=none
+- *(chart)* Support authProviders "none" for a login-free first setup
+
 ### Bug Fixes
 
 - *(chart)* Make the Tailscale sidecar restricted-compliant and stateful ([#17](https://github.com/donaldgifford/docz-api/issues/17))
+- *(queue)* Stop finished tasks from swallowing later ingest triggers
+- *(observability)* Log every HTTP error sink (IMPL-0006 Phase 4)
 
 ### Documentation
 
-- *(inv)* INV-0007 — ingest failures are silent and block re-ingestion
-- *(inv)* Extend INV-0007 with no-auth mode feasibility and silent-sink audit
-- *(inv)* Record OQ-1 field evidence — start lines can't discriminate failure stage
-- *(impl)* IMPL-0006 — error observability plan from INV-0007
-- *(impl)* Fix IMPL-0006 emphasis style and Phase 5 TOC anchor
-- *(impl)* Record IMPL-0006 OQ answers — all a, probe-semantics note on OQ-1
+- *(inv)* INV-0007 — ingest failures are silent and block re-ingestion ([#18](https://github.com/donaldgifford/docz-api/issues/18))
+- *(impl)* Mark IMPL-0006 Phase 1 complete
+- *(inv)* Record F4b — successful ingests also swallowed later triggers
+- *(impl)* Mark IMPL-0006 Phase 2 complete, record the F4b scope growth
+- *(impl)* Mark IMPL-0006 Phase 3 complete
+- *(deploy)* Lead first setup with AUTH_PROVIDERS=none
+- *(impl)* Mark IMPL-0006 Phase 5 complete
+- Close out IMPL-0006 and record the INV-0007 verification drill
+
+### Testing
+
+- *(queue)* Prove failure logging against real Redis
 
 ## [0.5.1] - 2026-08-11
 
