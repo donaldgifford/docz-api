@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -79,38 +78,30 @@ func selfCheck(ctx context.Context, gh *github.Client) (*AppIdentity, error) {
 	return &AppIdentity{ID: app.GetID(), Slug: app.GetSlug(), Name: app.GetName()}, nil
 }
 
-// transientStatuses are 4xx codes that mean "try again later", not "your
-// credentials are wrong". They must never fail startup: a throttled or timed-out
-// boot would otherwise crash-loop a deploy whose credentials are perfectly good.
-//
-// go-github only produces a typed *RateLimitError / *AbuseRateLimitError when
-// the response carries the matching headers or documentation_url, so a 429 from
-// a proxy, a CDN, or a GHES front end arrives as a plain *ErrorResponse and has
-// to be caught by status code.
-var transientStatuses = []int{
-	http.StatusRequestTimeout,
-	http.StatusTooManyRequests,
-}
-
 // isCredentialRejection reports whether GitHub refused the credentials, as
-// opposed to being unreachable or throttling us.
+// opposed to being unreachable, throttling us, or refusing for some other
+// operational reason.
 //
-// Rate limiting also arrives as a 4xx, so it is excluded explicitly: throttling
-// is transient and must not be mistaken for a bad key.
+// Only 401 counts. SelfCheck calls GET /app, which authenticates the App itself
+// with a JWT signed by the private key and needs no permissions at all, so a
+// bad key is the only thing 401 can mean there.
+//
+// Everything else is deliberately treated as transient, because the two
+// misclassifications are not symmetric. Calling a transient failure permanent
+// crash-loops a deploy whose credentials are fine, taking down the read API for
+// a problem that only affects ingest. Calling a permanent failure transient
+// costs one startup warning — and since INV-0007 every ingest attempt now logs
+// its own cause, so a genuinely bad key is still obvious within one job.
+//
+// 403 is the case that forces the issue: GitHub uses it for primary rate
+// limiting as well as for suspended installations, and go-github only produces
+// a typed *RateLimitError when the response carries X-RateLimit-Remaining: 0.
+// A 403 from a proxy, a CDN, or a GHES front end therefore arrives as a plain
+// *ErrorResponse and is indistinguishable from a real refusal.
 func isCredentialRejection(err error) bool {
-	var rateLimit *github.RateLimitError
-	var abuse *github.AbuseRateLimitError
-	if errors.As(err, &rateLimit) || errors.As(err, &abuse) {
-		return false
-	}
-
 	var apiErr *github.ErrorResponse
 	if !errors.As(err, &apiErr) || apiErr.Response == nil {
 		return false
 	}
-	code := apiErr.Response.StatusCode
-	if slices.Contains(transientStatuses, code) {
-		return false
-	}
-	return code >= http.StatusBadRequest && code < http.StatusInternalServerError
+	return apiErr.Response.StatusCode == http.StatusUnauthorized
 }

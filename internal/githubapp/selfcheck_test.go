@@ -133,24 +133,38 @@ func TestSelfCheckRejectsMalformedPrivateKey(t *testing.T) {
 	}
 }
 
-// A 429 without go-github's rate-limit markers (a proxy, a CDN, or a GHES front
-// end) still means "try again later". Classifying it as a rejection would
-// crash-loop a deploy whose credentials are fine — the exact outcome SelfCheck
-// exists to avoid.
-func TestSelfCheckTransientStatusIsNotARejection(t *testing.T) {
-	for _, status := range []int{http.StatusRequestTimeout, http.StatusTooManyRequests} {
+// GitHub uses 403 for primary rate limiting as well as for a suspended
+// installation, and go-github only types a *RateLimitError when the response
+// carries X-RateLimit-Remaining: 0 — so a 403 from a proxy, a CDN, or a GHES
+// front end is indistinguishable from a refusal. Classifying any of these as
+// permanent would crash-loop a deploy whose key is perfectly good, which is the
+// exact outcome SelfCheck exists to prevent.
+func TestSelfCheckOnlyTreats401AsRejection(t *testing.T) {
+	tests := []struct {
+		status   int
+		rejected bool
+	}{
+		{http.StatusUnauthorized, true},
+		{http.StatusForbidden, false},
+		{http.StatusRequestTimeout, false},
+		{http.StatusTooManyRequests, false},
+		{http.StatusNotFound, false},
+		{http.StatusInternalServerError, false},
+	}
+	for _, tc := range tests {
+		// No rate-limit headers and no abuse documentation_url, so go-github
+		// yields a plain *ErrorResponse for every one of these.
 		gh := newSelfCheckClient(t, selfCheckTransport{
-			status: status,
-			body:   `<html>too many requests</html>`,
+			status: tc.status,
+			body:   `{"message":"denied"}`,
 		})
 
 		_, err := selfCheck(t.Context(), gh)
 		if err == nil {
-			t.Fatalf("status %d: selfCheck succeeded, want an error", status)
+			t.Fatalf("status %d: selfCheck succeeded, want an error", tc.status)
 		}
-		if errors.Is(err, ErrCredentialsRejected) {
-			t.Errorf("status %d: err = %v, want it NOT classified as a credential rejection",
-				status, err)
+		if got := errors.Is(err, ErrCredentialsRejected); got != tc.rejected {
+			t.Errorf("status %d: rejected = %v, want %v", tc.status, got, tc.rejected)
 		}
 	}
 }

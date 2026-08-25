@@ -483,10 +483,17 @@ listed first:
    rule (catch it at `helm install`, not in CrashLoopBackOff).
 2. **`isCredentialRejection` classified any 4xx as permanent.** go-github only
    produces a typed `*RateLimitError` when the response carries the matching
-   headers, so a `429` from a proxy, CDN, or GHES front end arrived as a plain
-   `*ErrorResponse` and failed startup — precisely the crash-loop the boot
-   check is supposed to prevent. `408` and `429` are now excluded by status
-   code.
+   headers, so a throttled response from a proxy, CDN, or GHES front end
+   arrived as a plain `*ErrorResponse` and failed startup — precisely the
+   crash-loop the boot check is supposed to prevent. A first attempt excluded
+   `408`/`429` by status code; **a third review pass found that incomplete**,
+   because GitHub documents `403` as a primary rate-limit status too, so a bare
+   `403` still crash-looped. The permanent set is now **401 only**: `GET /app`
+   authenticates the App with a JWT and needs no permissions, so a bad key is
+   the only thing 401 can mean there. The two misclassifications are not
+   symmetric — calling a transient failure permanent takes down the read API
+   for an ingest-only problem, while calling a permanent one transient costs a
+   single startup warning now that every ingest attempt logs its own cause.
 3. **`DeleteTask` returning `ErrTaskNotFound` aborted the clear-and-retry.**
    Two pushes seconds apart both classify `clearAndRetry`; the loser found the
    task already gone and answered 500. Because `RecordDelivery` had already
@@ -503,6 +510,14 @@ listed first:
    `classifyConflict` explicitly accepts. Unreachable through the real
    `*asynq.Inspector`, but the seam exists to be swapped, and the test suite
    pins `(nil, nil)` as supported.
+
+A third pass adversarially verified those five fixes rather than trusting
+them. It confirmed four sound (checking asynq's actual `ErrTaskNotFound`
+sentinel, Go's double-`%w` behavior, every legitimate chart provider
+combination, and that no nil path remained) and found fix 2 incomplete, which
+is folded into item 2 above. It also caught that the corrupt-session test
+built its error with a single `%w` while production uses two — a test weaker
+than the code it guards, now pinned to the real shape.
 
 **Integration suites.** `just test-integration` (the `//go:build integration`
 tests, which CI does not run) is green across all 16 packages, including the

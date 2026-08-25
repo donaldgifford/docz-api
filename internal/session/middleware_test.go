@@ -174,8 +174,11 @@ func TestMiddlewareMissingSessionStaysQuiet401(t *testing.T) {
 func TestMiddlewareCorruptSessionIs401AndLogged(t *testing.T) {
 	rec := captureSlog(t)
 	store := &fakeLookuper{
-		id:  "good-id",
-		err: fmt.Errorf("%w: unexpected end of JSON input", ErrSessionCorrupt),
+		id: "good-id",
+		// Built exactly as Store.Lookup builds it — a double %w wrapping both
+		// the sentinel and the underlying decode error — so this pins the real
+		// error shape, not a simplified stand-in.
+		err: fmt.Errorf("%w: %w", ErrSessionCorrupt, errors.New("unexpected end of JSON input")),
 	}
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/repos", http.NoBody)
