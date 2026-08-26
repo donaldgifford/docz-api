@@ -37,6 +37,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - Close out IMPL-0006 and record the INV-0007 verification drill
 - Correct the credential and session rules after the review fixes
 - *(impl)* Record the final task as blocked on cluster availability
+- *(impl)* Link the downstream docz-site configuration issue
 
 ### Testing
 
