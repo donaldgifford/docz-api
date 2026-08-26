@@ -433,6 +433,9 @@ assuming it.
       task straight out of Valkey — needs the same access, so OQ-1 cannot be
       answered by any route until a cluster exists. Nothing in the branch
       depends on this; it is the last verification step, not a prerequisite.
+- [x] Downstream: file the docz-site configuration issue for the auth/no-auth
+      surface — donaldgifford/docz-site#17 (none-mode login UI, the new 503
+      versus 401 split, re-vendoring the spec at `1.2.1`).
 - [x] Close-out: mark INV-0007 recommendations 1–6 as implemented in the
       INV; update CLAUDE.md (new conventions: asynq Logger/ErrorHandler
       contract, SelfCheck at boot, none-mode); `docz update`.
