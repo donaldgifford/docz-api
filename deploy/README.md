@@ -298,9 +298,14 @@ either restart healthy pods or silently do nothing.
   App (`GET /app`) and logs the app id, slug and name. This is deliberately in
   **neither** probe. GitHub is not a serving dependency — the read API answers
   from Postgres and Meilisearch while GitHub is unreachable — so it must not
-  gate readiness. Credentials GitHub _rejects_ (bad app id, malformed private
-  key) fail startup outright; GitHub merely being _unreachable_ logs a warning
-  and startup continues.
+  gate readiness. Startup fails only on a **401** (a bad app id or a key GitHub
+  will not accept) or a private key that will not parse at all — between them
+  the realistic bad-credential cases. Everything else, including a 403 from a
+  _suspended_ App, a rate limit, or GitHub simply being unreachable, logs a
+  warning and startup continues. That asymmetry is deliberate: a false
+  "permanent" would crash-loop the pod and take the read API down for a problem
+  that only affects ingest, whereas a missed one costs a single warning and then
+  shows up in the per-job ingest error logs.
 - **Metrics:** `GET /metrics` — Prometheus exposition (disable with
   `METRICS_ENABLED=false`). Scrape it on the internal network; it is not behind
   the auth gate.

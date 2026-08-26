@@ -205,9 +205,13 @@ managed instances.
   are reachable, 503 naming the offender, which removes the pod from Service
   endpoints without restarting it. The chart wires both by default.
 - **GitHub App credentials are checked at startup, not by a probe.** The
-  service authenticates as the App at boot and logs its identity; credentials
-  GitHub rejects fail the deploy, while GitHub being unreachable only warns.
-  GitHub is not a serving dependency, so it must never gate readiness.
+  service authenticates as the App at boot and logs its identity. Only a 401
+  (bad app id, or a key GitHub will not accept) or an unparseable private key
+  fails the deploy. A 403 from a suspended App, a rate limit, and GitHub being
+  unreachable all warn and let the pod start — a transient GitHub problem must
+  never crash-loop a pod whose credentials are fine, and it only affects ingest,
+  which logs its own cause per job. GitHub is not a serving dependency, so it
+  must never gate readiness.
 - Set `metrics.enabled: true` (default) to serve Prometheus metrics on
   `/metrics`; enable `serviceMonitor.enabled: true` to have a Prometheus
   Operator scrape the `http` port at `/metrics`.

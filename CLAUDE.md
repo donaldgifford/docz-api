@@ -1062,19 +1062,36 @@ and an exhausted task blocked every future trigger for that repo. INV-0007
   repo for 24 h (F4b), which is a live-production bug, not a theoretical one.
 - **The GitHub App is verified at boot, not by a probe.** `githubapp.SelfCheck`
   mints the App JWT and calls `GET /app`, logging the authenticated slug.
-  Only a rejection GitHub actually issued (`ErrCredentialsRejected`, including
-  a malformed PEM, which fails inside `NewAppsTransport`) fails startup; rate
-  limits and transport errors warn and continue, so a GitHub outage cannot
-  crash-loop a healthy API. **Probe trio:** `/healthz` = liveness (checks
+  **Only a 401 fails startup** (`ErrCredentialsRejected`), plus a malformed PEM,
+  which fails inside `NewAppsTransport` before any request and is the most
+  common real-world credential fault. Everything else — 403, 429, 408, 404, 5xx,
+  transport errors — warns and continues. Do **not** widen this back to "any
+  4xx": GitHub uses 403 for primary rate limiting as well as for a suspended
+  App, and go-github only produces a typed `*RateLimitError` when the response
+  carries `X-RateLimit-Remaining: 0`, so a 403 from a proxy, a CDN, or a GHES
+  front end is indistinguishable from a refusal and would crash-loop a deploy
+  whose key is fine. `GET /app` needs no permissions, so 401 is the only
+  unambiguous bad-key signal. The two errors are not symmetric — a false
+  "permanent" takes down the read API for an ingest-only problem, while a false
+  "transient" costs one startup warning, and every ingest attempt now logs its
+  own cause. **Probe trio:** `/healthz` = liveness (checks
   nothing downstream — a restart cannot fix a dependency), `/readyz` =
   readiness (postgres/redis/meili, 503 names the offender), boot self-check =
   neither (GitHub is not a serving dependency).
 - **Every error path terminates in a logging sink.** The recurring bug was a
   wrapped error chain reaching the client as a bare status code and dying
-  there. `session.Middleware` discriminates `ErrSessionNotFound` (quiet 401,
-  ordinary churn) from infrastructure failure (log + **503**
-  `{"error":"session unavailable"}` — docz-site drives its login UI off 401,
-  so a Redis blip must not read as a logout). `authorize` logs before its 500;
+  there. `session.Middleware` splits on whether the caller has a usable session,
+  not on whether an error occurred: `ErrSessionNotFound` (ordinary churn) and
+  `ErrSessionCorrupt` (the value exists but will not decode) are both **401**,
+  the latter logged at Warn; only a backend that cannot answer at all gets
+  **503** `{"error":"session unavailable"}`. Both halves matter. 503 for a Redis
+  blip stops docz-site — which drives its login UI off 401 — from reading an
+  outage as a logout; 401 for a corrupt session avoids a dead end, since
+  `/api/v1/auth/logout` sits behind this same gate, so a 503 there would leave
+  the holder unable to clear the bad cookie or log in again. `Store.Lookup` is
+  the producer of both sentinels and is tested as such — testing only the
+  middleware leaves a refactor free to drop the label and silently restore the
+  dead end. `authorize` logs before its 500;
   `webhook` logs a body-read failure at **Warn with headers only** (pre-HMAC,
   so the payload is unverified) and a `ParseWebHook` failure at **Error**
   (post-HMAC, so it is schema drift, not a bad caller); both `writeJSON`
