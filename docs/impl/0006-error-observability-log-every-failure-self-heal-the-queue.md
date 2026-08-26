@@ -423,10 +423,16 @@ assuming it.
 - [x] Release: minor version bump (new env mode + logging surface), chart
       version bump for the Phase 5 template changes; `pr-semver` label
       `minor`.
-- [ ] **deferred - human required** — EKS redeploy of the new image + chart; re-trigger the INV-0007
-      failing repo; **close INV-0007 OQ-1 from the logs** — record the
-      actual root cause in INV-0007 (edit the OQ, note "answered via the
-      Phase 6 deploy").
+- [ ] **deferred - blocked, no cluster available** — redeploy the new image +
+      chart; re-trigger the INV-0007 failing repo; **close INV-0007 OQ-1 from
+      the logs** — record the actual root cause in INV-0007 (edit the OQ, note
+      "answered via the Phase 6 deploy"). Confirmed blocked on 2026-08-26, not
+      assumed: no reachable cluster context (only the unreachable homelab
+      ones) and no AWS credentials, and the operator confirmed there is no
+      cluster to use at present. INV-0007's runbook path — reading the archived
+      task straight out of Valkey — needs the same access, so OQ-1 cannot be
+      answered by any route until a cluster exists. Nothing in the branch
+      depends on this; it is the last verification step, not a prerequisite.
 - [x] Close-out: mark INV-0007 recommendations 1–6 as implemented in the
       INV; update CLAUDE.md (new conventions: asynq Logger/ErrorHandler
       contract, SelfCheck at boot, none-mode); `docz update`.
