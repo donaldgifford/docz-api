@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 
 - *(inv)* INV-0008 — adopt the docz v1.2.0 api block
+- *(inv)* Record INV-0003 F5 supersession by INV-0008
 
 ## [0.6.0] - 2026-08-26
 
