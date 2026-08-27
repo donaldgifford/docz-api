@@ -9,6 +9,10 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(chart)* Pin appVersion to the published image tag, not the git tag ([#20](https://github.com/donaldgifford/docz-api/issues/20))
 
+### Documentation
+
+- *(inv)* INV-0008 — adopt the docz v1.2.0 api block
+
 ## [0.6.0] - 2026-08-26
 
 ### Features
