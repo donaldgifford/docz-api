@@ -13,6 +13,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(inv)* INV-0008 — adopt the docz v1.2.0 api block
 - *(inv)* Record INV-0003 F5 supersession by INV-0008
+- *(inv)* Restructure INV-0008 open questions with lettered options
 
 ## [0.6.0] - 2026-08-26
 
