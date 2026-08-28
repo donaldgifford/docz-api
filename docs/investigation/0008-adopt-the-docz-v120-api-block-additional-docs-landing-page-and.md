@@ -30,7 +30,13 @@ created: 2026-08-27
   - [Observation 8 — inherited security posture and upstream loose ends](#observation-8--inherited-security-posture-and-upstream-loose-ends)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
-- [Open questions for the design](#open-questions-for-the-design)
+- [Open Questions](#open-questions)
+  - [1. Do pages join search, and when?](#1-do-pages-join-search-and-when)
+  - [2. Serve shape for path-addressed pages?](#2-serve-shape-for-path-addressed-pages)
+  - [3. Landing page: generalize the index columns or add new ones?](#3-landing-page-generalize-the-index-columns-or-add-new-ones)
+  - [4. How does the webhook match additional_docs pushes?](#4-how-does-the-webhook-match-additional_docs-pushes)
+  - [5. index.md vs README.md when a directory has both?](#5-indexmd-vs-readmemd-when-a-directory-has-both)
+  - [6. Does the published path keep the .md extension?](#6-does-the-published-path-keep-the-md-extension)
 - [References](#references)
 <!--toc:end-->
 
@@ -410,9 +416,9 @@ needs *re*doing.
    endpoints (list + get-by-path) with a re-validation rule at the decoded-
    path boundary; a minor spec bump; and a decision on search inclusion.
 3. **DESIGN or straight to IMPL:** DESIGN. docz settled the *contract* but
-   explicitly left fetch/walk/route/store to us, and at least five decisions
-   below are genuinely open with real trade-offs — the same test that sent
-   the (smaller) index and changelog slices through design first.
+   explicitly left fetch/walk/route/store to us, and the six decisions below
+   are genuinely open with real trade-offs — the same test that sent the
+   (smaller) index and changelog slices through design first.
 
 ## Recommendation
 
@@ -442,28 +448,127 @@ needs *re*doing.
    link graph, lifecycle dates, labels (INV-0003 F2–F4), and any PDF/export
    surface.
 
-## Open questions for the design
+## Open Questions
 
-1. **Search inclusion** — do pages join Meilisearch in the first slice
-   (docz-site's Obs 5 bar says eventually they must), and as what: same
-   `documents` index with a `source` facet (site INV-0003's suggestion), or
-   a second index? The PK scheme must change either way (paths violate the
-   `[a-zA-Z0-9-_]` charset).
-2. **Serve shape** — `pages` list + get-by-path as sketched, or a single
-   tree endpoint? How does the wildcard path fit OAS 3.1 and the kin-openapi
-   contract test?
-3. **Landing-page generalization** — reuse `repos.index_md/index_sha` with
-   the fetch following `cfg.API.LandingPage` (recommended in Observation 4),
-   or a separate column pair? Does `GET .../index` serve the configured
-   landing page for opted-in repos, or stay literally `docs_dir/index.md`?
-4. **Webhook matching for `additional_docs`** — parse the repo row's
-   `config_snapshot` in `handlePush`, or persist a normalized path list
-   (the `changelog_file` column precedent, plural)?
-5. **`index.md` vs `README.md` precedence** when a directory has both —
-   pick locally and document, or block on an upstream ruling?
-6. **Extension in the published path** — serve `examples/example1.md` with
-   the extension (matches the site's `byPath` map and docz's README table)
-   and let the site strip it for display?
+Answer each with a letter — **a is the recommendation**, b onward are
+alternatives; write in your own option if none fits. Decisions recorded here
+feed DESIGN-0004 directly.
+
+### 1. Do pages join search, and when?
+
+docz-site's acceptance bar (its INV-0003 Obs 5) is that every rendered page
+is findable from the ⌘K palette — pages that render but don't search *"would
+read as broken search, not as a hosting detail."* But pages break two search
+assumptions: `SearchHit` requires `doc_id`/`type`/`status`/`author` (pages
+have none), and the index PK scheme `<repo_id>_<doc_id>` cannot encode paths
+(the PK charset is `[a-zA-Z0-9-_]`).
+
+- **a. (Recommendation) Same `documents` index with a `source` facet
+  (`doc`/`page`), landed as a late phase of the same IMPL.** The first
+  vertical slice ships fetch→store→serve without search, but the IMPL is not
+  done until pages search. One palette, one front door (the site's bar); the
+  facet keeps doc-only filtering intact; the PK scheme changes once (hashed
+  or encoded) for both record kinds. `SearchHit` grows a `source` field with
+  relaxed requireds — an additive spec bump.
+- b. Search in the very first slice. Cleanest end state, but it front-loads
+  the wire-contract change and doubles the first PR's surface.
+- c. A second Meilisearch index for pages. Isolated schemas, but two queries
+  per palette search, split facet counts, and the multi-search coordination
+  lands on the site.
+- d. Defer search to its own design after pages ship. Violates the site's
+  acceptance bar; the rendered-but-unfindable window becomes open-ended.
+
+### 2. Serve shape for path-addressed pages?
+
+Page paths contain `/` and `.`; OpenAPI 3.1 has no native multi-segment path
+parameter, and the kin-openapi/gorillamux contract test must be able to
+exercise whatever shape we pick.
+
+- **a. (Recommendation) `GET .../pages` (flat list: path, title, sha) plus
+  `GET .../pages/{path}` with `{path}` matched by a chi wildcard.** The flat
+  list is exactly what the site's `byPath` resolver map wants (the site
+  builds its own tree); the page route follows GitHub's own contents-API
+  precedent (`/repos/{owner}/{repo}/contents/{path}`). Spec the param
+  `style: simple` with a description stating slashes are allowed; the
+  contract test exercises the percent-encoded spelling, which routes
+  identically (chi matches the decoded path). The handler re-validates the
+  decoded path (clean, no `..`) before lookup, per docz's warning that
+  decoding a path voids its config-time validation.
+- b. Query parameter: `GET .../page?path=…`. Trivially spec-able, no routing
+  subtlety — at the cost of an asymmetric surface (`/index`, `/changelog`,
+  but `?path=` for pages) and a second, singular route name.
+- c. One tree endpoint returning every page with its body. One round trip,
+  but unbounded response size and no per-page caching off the sha.
+
+### 3. Landing page: generalize the index columns or add new ones?
+
+`repos.index_md`/`index_sha` already cache `docs_dir/index.md` — which is
+exactly `v1.2.0`'s *default* `landing_page`. An enabled block can point it
+anywhere repo-relative (outside templates/excludes).
+
+- **a. (Recommendation) Reuse the columns; the fetch follows
+  `cfg.API.LandingPage` when the block is enabled** and stays hard-wired to
+  `docs_dir/index.md` otherwise. `GET .../index` keeps serving "the repo
+  home" — which is what it always meant — and non-opted-in repos are
+  byte-for-byte unchanged. The spec change is a description edit, not a
+  shape change.
+- b. New `landing_md`/`landing_sha` columns and a new endpoint, deprecating
+  `/index`. Cleaner naming; pointless migration and a breaking journey for
+  the one consumer.
+- c. Model the landing page as a row in the pages table flagged as landing.
+  One storage shape, but it breaks the "pages live under `docs_dir` or
+  `additional_docs`" invariant and complicates the repo-row read the site
+  performs first.
+
+### 4. How does the webhook match additional_docs pushes?
+
+`additional_docs` live outside `docs_dir`, so `shouldIngest`'s prefix check
+never sees them — the changelog problem, pluralized. `handlePush` already
+holds the full repo row.
+
+- **a. (Recommendation) Persist the normalized list on the repo row (JSONB
+  `api_additional_docs`, written by the reconcile from the post-`Load`
+  config).** The plural of the `changelog_file` column precedent, chosen
+  then for the same reason: the webhook matches against what the last ingest
+  actually resolved — normalized and validated — not raw YAML it would have
+  to re-parse. One exact-set membership check per push.
+- b. Parse `config_snapshot` in `handlePush`. Zero migration, but it
+  re-derives desired state from raw config on the webhook path and
+  duplicates normalization assumptions the reconcile already owns.
+- c. Enqueue on any default-branch push when `api.enabled`. The simplest
+  rule, and the debounce plus content-hash gate absorb the redundancy — but
+  every push then costs a full GitHub tree fetch.
+
+### 5. index.md vs README.md when a directory has both?
+
+docz left this unspecified: DESIGN-0011's normative rule names `README.md`
+as a directory's page (`index.md` appears only as the repo-root landing
+default), while the docz README's paraphrase says "`index.md` or
+`README.md`" with no tiebreak.
+
+- **a. (Recommendation) Follow the normative text: `README.md` is the
+  directory page; a non-root `index.md` is an ordinary path-addressed
+  page.** Self-consistent with DESIGN-0011 rule 2 (the docz-generated
+  type-dir `README.md` tables *are* the type pages), no information is ever
+  dropped, and we ask upstream to align the README wording rather than
+  invent a local precedence.
+- b. `index.md` wins where both exist (the MkDocs instinct, matching the
+  root convention); `README.md` becomes path-addressed. Defensible, but it
+  contradicts the one normative sentence that exists.
+- c. Block the feature on an upstream ruling. Safest and slowest; the
+  ambiguity only bites directories carrying both, which we can log when
+  seen.
+
+### 6. Does the published path keep the .md extension?
+
+- **a. (Recommendation) Yes — pages are addressed by their exact repo
+  paths, extension included.** Matches the site's `byPath` map (keyed on
+  real paths), the docz README's URL table, and exact-byte serving with no
+  canonicalization surface. DESIGN-0011 explicitly leaves
+  extension-stripping to the site as presentation.
+- b. Strip `.md` in the API. Prettier URLs at the cost of a collision rule
+  (`a.md` vs a directory `a`) and a second path spelling to validate
+  everywhere.
 
 ## References
 
