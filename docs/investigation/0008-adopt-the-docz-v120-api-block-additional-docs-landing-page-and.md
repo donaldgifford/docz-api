@@ -1,7 +1,7 @@
 ---
 id: INV-0008
 title: "Adopt the docz v1.2.0 api block: additional docs, landing page, and path-addressed pages"
-status: Open
+status: Concluded
 author: Donald Gifford
 created: 2026-08-27
 ---
@@ -9,7 +9,7 @@ created: 2026-08-27
 
 # INV 0008: Adopt the docz v1.2.0 api block: additional docs, landing page, and path-addressed pages
 
-**Status:** Open
+**Status:** Concluded
 **Author:** Donald Gifford
 **Date:** 2026-08-27
 
@@ -423,7 +423,7 @@ needs *re*doing.
 ## Recommendation
 
 1. **Write DESIGN-0004** ("Consume the docz v1.2.0 api block: pages,
-   landing page, and additional docs") resolving the open questions below,
+   landing page, and additional docs") from the answered decisions below,
    then an IMPL with the phasing we've converged on across IMPL-0003/0005:
    pin bump + contract clause first, vertical slice per surface after.
 2. **Phase 1 of the eventual IMPL is mechanical and low-risk**: bump to
@@ -453,6 +453,13 @@ needs *re*doing.
 Answer each with a letter — **a is the recommendation**, b onward are
 alternatives; write in your own option if none fits. Decisions recorded here
 feed DESIGN-0004 directly.
+
+**All answered (2026-08-28): 1a, 2a, 3a, 4a, 5a (amended in review — see
+its resolution), 6a.** Review raised one check on 5: the docz CLI backfills
+`landing_page` to `<docs_dir>/index.md` when the block is enabled, and the
+rule must match that expectation. It does at the repo root by construction —
+the landing page *is* the root page (3a) — and the 5a amendment extends the
+same courtesy to lone `index.md` files in directories.
 
 ### 1. Do pages join search, and when?
 
@@ -558,6 +565,25 @@ default), while the docz README's paraphrase says "`index.md` or
 - c. Block the feature on an upstream ruling. Safest and slowest; the
   ambiguity only bites directories carrying both, which we can log when
   seen.
+
+**Resolution (a, amended 2026-08-28):** review pointed at the CLI's
+`<docs_dir>/index.md` landing default as the expectation to match, which
+exposed a gap in a's strict reading — docz's public README promises *"a
+directory's `index.md` or `README.md` is that directory's page"*, so a lone
+`index.md` must serve as the directory page, not be path-addressed. The full
+precedence:
+
+1. The repo root is always the landing page (`cfg.API.LandingPage`,
+   defaulting to `<docs_dir>/index.md` via the CLI backfill) — Q3a's
+   territory, untouched here.
+2. A non-root directory's page is its `README.md`; when there is no
+   `README.md`, its `index.md`.
+3. When a directory has **both**, `README.md` wins (DESIGN-0011's normative
+   rule 2 — in type dirs the docz-generated table *is* the type page) and
+   the `index.md` is served path-addressed, so nothing is dropped.
+
+Upstream ask (folds into Recommendation 5): ratify this precedence and align
+the docz README / DESIGN-0011 wording, which currently disagree.
 
 ### 6. Does the published path keep the .md extension?
 
