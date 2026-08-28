@@ -368,6 +368,11 @@ dormant-block invariant proven by withheld-blob stubs, not asserted.
 Answer each with a letter — **a is the recommendation**, b onward are
 alternatives; write in your own option if none fits.
 
+**Answered `1a` (2026-08-28).** The feature ships as two PRs: PR-1 =
+Phases 1–5 (spec `1.3.0`, the pages endpoints), PR-2 = Phases 6–7 (spec
+`1.4.0`, the `SearchHit` additions). This doc stays In Progress until
+PR-2 merges.
+
 ### 1. Shipping shape: how do the phases land on main?
 
 IMPL-0005 shipped its whole vertical as one PR (its OQ-4a: no
