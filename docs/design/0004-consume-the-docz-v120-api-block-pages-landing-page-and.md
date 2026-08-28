@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0004
 title: "Consume the docz v1.2.0 api block: pages, landing page, and additional docs"
-status: Draft
+status: Approved
 author: Donald Gifford
 created: 2026-08-28
 ---
@@ -9,7 +9,7 @@ created: 2026-08-28
 
 # DESIGN 0004: Consume the docz v1.2.0 api block: pages, landing page, and additional docs
 
-**Status:** Draft
+**Status:** Approved
 **Author:** Donald Gifford
 **Date:** 2026-08-28
 
@@ -509,6 +509,13 @@ subtlety the repo-row caches need).
 
 Answer each with a letter — **a is the recommendation**, b onward are
 alternatives; write in your own option if none fits.
+
+**All answered `a` (2026-08-28).** OQ-1a comes with a review note: in
+practice most repos will put their non-docz markdown under `docs_dir` too,
+so the two namespaces rarely both carry entries and collisions should stay
+rare — 1a is the safety net for the rare case, not a hot path. (That same
+observation is why the deterministic-winner rule costs nothing: it almost
+never fires, but when it does, it fires the same way every time.)
 
 ### 1. Who wins a published-path collision between the two namespaces?
 
