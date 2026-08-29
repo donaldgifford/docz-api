@@ -304,19 +304,32 @@ getRepoPage (percent-encoded, directory page, 404) against the spec.
 
 #### Tasks
 
-- [ ] `shouldIngest` gains the two exact-path checks from the repo row:
+- [x] `shouldIngest` gains the two exact-path checks from the repo row:
       `p == api_landing_page` (when set) and `p ∈ api_additional_docs`
       (when set); NULL columns match nothing.
-- [ ] Unit tests: a landing page outside the docs dir triggers; an
+- [x] Unit tests: a landing page outside the docs dir triggers; an
       additional doc triggers; an unrelated root file still skips; NULL
       columns behave exactly as today.
-- [ ] `just test` / `just lint` / `just fmt` green; commit.
+- [x] `just test` / `just lint` / `just fmt` green; commit.
 
 #### Success Criteria
 
 - A push touching only a root `CONTRIBUTING.md` listed in additional docs
   re-ingests; the same push against a never-opted-in repo is skipped —
   both proven at the `shouldIngest` table.
+
+**Status: COMPLETE ✅** (2026-08-29) — the changelog's exact-path match
+generalized instead of growing two more parameters: `shouldIngest` now
+takes `watched []string` and `watchedFiles(repo)` builds it from the
+repo row (changelog file + api landing page + decoded
+`api_additional_docs` JSONB; NULL columns contribute nothing; malformed
+JSONB warns and matches nothing rather than failing the webhook). The
+`shouldIngest` table gained the landing-outside-docs-dir, additional-doc,
+unrelated-root-file, and non-default-branch cases; `TestWatchedFiles`
+pins the row-to-set plumbing; `TestServeHTTPPushAdditionalDocEnqueues`
+proves the wiring end to end through `handlePush` (the success
+criterion's re-ingest, plus the never-opted-in skip already in
+`TestServeHTTPPushSkips`).
 
 ### Phase 6: Search — the source facet
 
