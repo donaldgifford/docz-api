@@ -1,7 +1,7 @@
 ---
 id: IMPL-0007
 title: "Consume the docz v1.2.0 api block: pages, landing page, and additional docs"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-08-28
 ---
@@ -9,7 +9,7 @@ created: 2026-08-28
 
 # IMPL 0007: Consume the docz v1.2.0 api block: pages, landing page, and additional docs
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-28
 
@@ -379,24 +379,24 @@ headline lands with Phase 7's test.
 
 #### Tasks
 
-- [ ] `internal/e2e` integration test (the
+- [x] `internal/e2e` integration test (the
       `TestE2ERepoChangelogServeAndDisable` shape): onboard a fixture repo
       with an enabled block → pages listed + served (a directory page, a
       file page, an additional doc) → push disabling the block → rows
       gone, list empty, 404s, index purged.
-- [ ] Dogfood: enable the `api:` block in this repo's `.docz.yaml` (and
+- [x] Dogfood: enable the `api:` block in this repo's `.docz.yaml` (and
       docz's, via an upstream PR) — the rollout's first real traffic.
-- [ ] Docs: `deploy/README.md` + `api/README.md` consumer notes
+- [x] Docs: `deploy/README.md` + `api/README.md` consumer notes
       (**enabling publishes every `.md` under the docs dir**; `exclude` is
       the guard rail); CLAUDE.md gains the DESIGN-0004/IMPL-0007 section.
-- [ ] File the docz-site coordination issue (the list shape for `byPath`,
+- [x] File the docz-site coordination issue (the list shape for `byPath`,
       the `source` facet, the reserved-word note, spec re-vendor).
-- [ ] File the upstream docz follow-ups: close #81 against `v1.2.0`; the
+- [x] File the upstream docz follow-ups: close #81 against `v1.2.0`; the
       directory-page precedence ratification (5a-amended); the
       cross-namespace uniqueness validation (design OQ-1a's hardening
       half); the IMPL-0016 Phase-4 leftovers (status flips, release-notes
       extraction).
-- [ ] Flip [DESIGN-0004] → Implemented and this doc → Completed; `docz
+- [x] Flip [DESIGN-0004] → Implemented and this doc → Completed; `docz
       update`; final `just ci` green.
 
 #### Success Criteria
@@ -404,6 +404,20 @@ headline lands with Phase 7's test.
 - Every DESIGN-0004 testing-strategy row has a named, passing test; the
   e2e run proves serve-and-disable end to end against real Postgres +
   Meilisearch; both follow-up issue sets exist; the docs say what ships.
+
+**Status: COMPLETE ✅** (2026-08-29) — `TestE2ERepoPagesServeAndDisable`
+(real Postgres + real Meilisearch) proves onboard → list/serve (directory
+page via README, percent-encoded file page, additional doc) → search hits
+with `source: page` → disable-at-HEAD → empty list, 404s, index purged.
+Dogfood: this repo's `.docz.yaml` enables the block
+(`additional_docs: [DEVELOPMENT.md]`, publishing
+`operations/ecr-publish-setup.md` as a page); docz's own opt-in is docz
+PR #88. Docs landed in `api/README.md` (spec history `1.3.0`/`1.4.0` +
+the publishes-everything warning), `deploy/README.md` (pages opt-in
+note), and the CLAUDE.md DESIGN-0004/IMPL-0007 section. Coordination:
+docz-site#21. Upstream: docz#81 closed against `v1.2.0`; docz#85
+(precedence ratification), docz#86 (cross-namespace uniqueness), docz#87
+(IMPL-0016 Phase-4 leftovers). Statuses flipped; final `just ci` green.
 
 ## File Changes
 
