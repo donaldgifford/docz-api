@@ -338,22 +338,22 @@ PKs are unchanged; pages hash (design OQ-3a).
 
 #### Tasks
 
-- [ ] `search.IndexDoc` gains `Source string`; `EnsureIndex` adds `source`
+- [x] `search.IndexDoc` gains `Source string`; `EnsureIndex` adds `source`
       to the filterable attributes (idempotent settings update).
-- [ ] Page index mapping in `internal/ingest`: PK
+- [x] Page index mapping in `internal/ingest`: PK
       `<repo_id>_p_<hex(sha256(published_path))[:16]>`; fields source /
       repo / repo id / path / title / body / updated at; the doc mapping
       gains `Source: "doc"` + `Path`.
-- [ ] `syncIndex` extends to `UpsertedPagePaths`/`DeletedPagePaths`
+- [x] `syncIndex` extends to `UpsertedPagePaths`/`DeletedPagePaths`
       (fetch changed rows via a `GetRepoPagesByPaths` query, delete by
       hashed PK); still best-effort, still after the Postgres commit.
-- [ ] `SearchParams`/`buildFilter` untouched (repo scoping already covers
+- [x] `SearchParams`/`buildFilter` untouched (repo scoping already covers
       pages via `repo_id`); `SearchHit` gains `source` + `path`; the spec
       bump rides this phase's PR per OQ-1 (a: `1.4.0`).
-- [ ] Search integration tests: page indexed + searchable, `source` facet
+- [x] Search integration tests: page indexed + searchable, `source` facet
       counts, page-hit shape (`""` doc fields), page deletion, repo-scope
       filter still applied, offboard purge covers pages.
-- [ ] `just test` / `just lint` / `just fmt` green; commit.
+- [x] `just test` / `just lint` / `just fmt` green; commit.
 
 #### Success Criteria
 
@@ -361,6 +361,19 @@ PKs are unchanged; pages hash (design OQ-3a).
   `docs/examples/example1.md` are findable via `GET /api/v1/search`, carry
   `source: "page"` and their published paths, and disappear from the index
   when removed at HEAD.
+
+**Status: COMPLETE ✅** (2026-08-29) — `IndexDoc`/`SearchHit` gained
+`Source` ("doc"/"page" consts) + `Path` (repo-relative on docs, published
+on pages); `source` is filterable and faceted; `pagePrimaryKey` hashes
+the published path (16 hex chars, "p" marker keeps it out of the doc-id
+namespace); `syncIndex` folds page deletes/upserts into its one delete +
+one index call via `GetRepoPagesByPaths`; spec bumped to `1.4.0`
+(SearchHit `source` enum + `path`, contract fixture in lockstep). Proven
+by `TestRunIndexesUpsertedPages` (service-level sync), the indexmap
+tables, and the widened six-record integration corpus
+(`TestIntegrationPageHitShape` / `PageDeletion` / source facet counts /
+purge-covers-pages) against real Meilisearch. The e2e removed-at-HEAD
+headline lands with Phase 7's test.
 
 ### Phase 7: End-to-end proof, docs, and close-out
 
