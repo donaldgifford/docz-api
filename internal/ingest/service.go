@@ -218,33 +218,34 @@ func (s *Service) syncIndex(
 		}
 	}
 
-	docs, err := s.upsertedIndexDocs(ctx, owner, name, result)
+	records, err := s.upsertedIndexRecords(ctx, owner, name, result)
 	if err != nil {
 		return err
 	}
-	if len(docs) == 0 {
+	if len(records) == 0 {
 		return nil
 	}
-	if err := s.indexer.IndexDocuments(ctx, docs); err != nil {
+	if err := s.indexer.IndexDocuments(ctx, records); err != nil {
 		return fmt.Errorf("index documents: %w", err)
 	}
 	return nil
 }
 
-// upsertedIndexDocs fetches the rows behind a reconcile's upserted doc ids and
-// page paths and maps them to index records. Both fetches tolerate a row
-// removed since the commit (the result is simply shorter).
-func (s *Service) upsertedIndexDocs(
+// upsertedIndexRecords fetches the rows behind a reconcile's upserted doc ids
+// and page paths and maps them to index records (both sources mixed). Both
+// fetches tolerate a row removed since the commit (the result is simply
+// shorter).
+func (s *Service) upsertedIndexRecords(
 	ctx context.Context, owner, name string, result *store.ReconcileResult,
 ) ([]search.IndexDoc, error) {
-	docs := make([]search.IndexDoc, 0, len(result.UpsertedDocIDs)+len(result.UpsertedPagePaths))
+	records := make([]search.IndexDoc, 0, len(result.UpsertedDocIDs)+len(result.UpsertedPagePaths))
 	if len(result.UpsertedDocIDs) > 0 {
 		rows, err := s.store.GetDocumentsByIDs(ctx, result.RepoID, result.UpsertedDocIDs)
 		if err != nil {
 			return nil, fmt.Errorf("fetch upserted docs: %w", err)
 		}
 		for i := range rows {
-			docs = append(docs, toIndexDoc(owner, name, result.RepoID, &rows[i]))
+			records = append(records, toIndexDoc(owner, name, result.RepoID, &rows[i]))
 		}
 	}
 	if len(result.UpsertedPagePaths) > 0 {
@@ -253,10 +254,10 @@ func (s *Service) upsertedIndexDocs(
 			return nil, fmt.Errorf("fetch upserted pages: %w", err)
 		}
 		for i := range rows {
-			docs = append(docs, toIndexPage(owner, name, result.RepoID, &rows[i]))
+			records = append(records, toIndexPage(owner, name, result.RepoID, &rows[i]))
 		}
 	}
-	return docs, nil
+	return records, nil
 }
 
 // changelogFile returns the repo-relative changelog path the config opts into,

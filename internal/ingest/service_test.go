@@ -382,8 +382,8 @@ func TestRunIndexesUpsertedPages(t *testing.T) {
 		t.Fatalf("indexed %d records, want 2 (one doc + one page)", len(idx.indexed))
 	}
 	bySource := make(map[string]search.IndexDoc, len(idx.indexed))
-	for _, rec := range idx.indexed {
-		bySource[rec.Source] = rec
+	for _, record := range idx.indexed {
+		bySource[record.Source] = record
 	}
 	doc, ok := bySource[search.SourceDoc]
 	if !ok || doc.DocID != "FW-0001" || doc.Path != "docs/frameworks/0001-intro.md" {
