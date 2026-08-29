@@ -48,12 +48,17 @@ type SearchParams struct {
 	Limit          int64
 }
 
-// SearchHit is one result row with a highlighted body snippet.
+// SearchHit is one result row with a highlighted body snippet. Source is
+// "doc" or "page"; Path is the repo-relative file path on docs and the
+// published path on pages. The doc-only fields (DocID/Type/Status/Author) are
+// "" on page hits — the wire's not-applicable convention.
 type SearchHit struct {
+	Source  string `json:"source"`
 	Repo    string `json:"repo"`
 	DocID   string `json:"doc_id"`
 	Type    string `json:"type"`
 	Title   string `json:"title"`
+	Path    string `json:"path"`
 	Status  string `json:"status"`
 	Author  string `json:"author"`
 	Snippet string `json:"snippet"`
