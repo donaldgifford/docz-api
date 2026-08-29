@@ -5,19 +5,24 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 ## [unreleased]
 
+### Features
+
+- *(doczcontract)* Pin docz v1.2.0 + freeze the api surface (R10)
+- *(store)* Repo_pages table + api columns and their query set
+- *(store)* Reconcile pages — PageInput, api repo fields, reconcileRepoPages
+- *(githubapp)* ApiHint + widened tree filter + additional_docs fetch
+- *(ingest)* BuildPages classifier + api-field wiring
+- *(httpapi)* Pages endpoints + spec 1.3.0
+- *(webhook)* Match api landing page + additional_docs pushes
+
 ### Bug Fixes
 
 - *(chart)* Pin appVersion to the published image tag, not the git tag ([#20](https://github.com/donaldgifford/docz-api/issues/20))
+- *(ingest)* Reject hostile tree paths at the writer; report absent additional_docs
 
 ### Documentation
 
-- *(inv)* INV-0008 — adopt the docz v1.2.0 api block
-- *(inv)* Record INV-0003 F5 supersession by INV-0008
-- *(inv)* Restructure INV-0008 open questions with lettered options
-- *(inv)* Conclude INV-0008 — all OQs answered (1a 2a 3a 4a 5a-amended 6a)
-- *(design)* DESIGN-0004 — consume the docz v1.2.0 api block
-- *(impl)* IMPL-0007 — phased plan for the docz v1.2.0 api block; DESIGN-0004 approved
-- *(impl)* Record IMPL-0007 OQ-1a — ship as two PRs (pages at 1.3.0, search at 1.4.0)
+- INV-0008 + DESIGN-0004 + IMPL-0007 — adopt the docz v1.2.0 api block (pages, landing page, additional docs) ([#21](https://github.com/donaldgifford/docz-api/issues/21))
 
 ## [0.6.0] - 2026-08-26
 
