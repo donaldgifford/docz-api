@@ -264,31 +264,41 @@ failure through the existing Validate path.
 
 #### Tasks
 
-- [ ] `httpapi.storeReader` gains `ListRepoPages` + `GetRepoPageByPath`;
+- [x] `httpapi.storeReader` gains `ListRepoPages` + `GetRepoPageByPath`;
       DTOs `pageSummaryDTO{path, title, git_sha}` /
       `pageDTO{repo, path, title, raw_md, git_sha}` (never expose sqlc
       types).
-- [ ] `GET /api/v1/repos/{owner}/{name}/pages` — `{"pages":[…]}` ordered
+- [x] `GET /api/v1/repos/{owner}/{name}/pages` — `{"pages":[…]}` ordered
       by path; empty set (including never-opted-in) ⇒ `200 {"pages":[]}`.
-- [ ] `GET /api/v1/repos/{owner}/{name}/pages/*` — chi wildcard; decoded
+- [x] `GET /api/v1/repos/{owner}/{name}/pages/*` — chi wildcard; decoded
       path re-validated before lookup (non-empty, no `..`/`.` segments, no
       leading `/`, no `\`, no control bytes) ⇒ reject as 404; exact-byte
       lookup; miss ⇒ 404 `{"error":"page not found"}`.
-- [ ] Spec `1.3.0`: the two ops + `PageList`/`PageSummary`/`Page` schemas,
+- [x] Spec `1.3.0`: the two ops + `PageList`/`PageSummary`/`Page` schemas,
       `additionalProperties: false`; `{path}` documented as a
       slash-containing repo path (percent-encoded as one segment by
       clients); `getRepoIndex` description notes the configurable landing
       page. `just lint-openapi` (vacuum 100/100) + `yamlfmt` clean.
-- [ ] Contract tests: list happy + empty, page happy (the percent-encoded
+- [x] Contract tests: list happy + empty, page happy (the percent-encoded
       spelling) + 404; traversal/undecodable paths 404; existing fixtures
       untouched.
-- [ ] `just test` / `just lint` / `just fmt` green; commit.
+- [x] `just test` / `just lint` / `just fmt` green; commit.
 
 #### Success Criteria
 
 - Both endpoints validate against the served spec in the in-process
   contract test; a repo without pages serves an empty list and 404s every
   page path; no existing route or schema changed shape.
+
+**Status: COMPLETE ✅** (2026-08-29) — `listRepoPages`/`getRepoPage` on
+the repo route (chi `/pages/*` wildcard, `url.PathUnescape` +
+`validPagePath` re-validation → 404, exact-byte lookup);
+`pageSummaryDTO`/`pageDTO`; store read wrappers; spec `1.3.0` (two ops,
+`PagePath` param, `PageList`/`PageSummary`/`Page` schemas,
+`getRepoIndex` landing-page note; vacuum 100/100). Handler tests cover
+list happy/empty, both path spellings, case-miss, and eight invalid-path
+flavors; the contract test validates listRepoPages (happy + empty) and
+getRepoPage (percent-encoded, directory page, 404) against the spec.
 
 ### Phase 5: Webhook — matching files outside the docs dir
 
