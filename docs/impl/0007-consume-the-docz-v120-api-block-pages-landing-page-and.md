@@ -161,28 +161,28 @@ discipline documents have; nothing reads it yet.
 
 #### Tasks
 
-- [ ] Migration `repo_pages` (DESIGN-0004 Data Model verbatim: id / repo
+- [x] Migration `repo_pages` (DESIGN-0004 Data Model verbatim: id / repo
       FK CASCADE / path / repo path / title / git sha / content hash /
       raw md / updated at, `UNIQUE (repo_id, path)`, repo index) +
       `repos.api_landing_page` TEXT NULL + `repos.api_additional_docs`
       JSONB NULL; verified up/down.
-- [ ] sqlc queries: `UpsertRepoPage`, `DeleteRepoPage`,
+- [x] sqlc queries: `UpsertRepoPage`, `DeleteRepoPage`,
       `ListRepoPageHashes` (path + content hash, the gate read),
       `ListRepoPages` (no raw md), `GetRepoPageByPath` (with raw md);
       `just generate` / `generate-check` clean.
-- [ ] `PageInput{Path, RepoPath, Title, GitSHA, ContentHash, RawMD}`;
+- [x] `PageInput{Path, RepoPath, Title, GitSHA, ContentHash, RawMD}`;
       `ReconcileInput.Pages`; `RepoInput` gains `APILandingPage string` +
       `APIAdditionalDocs []string` (empty ⇒ NULL — desired state);
       `UpsertRepo` writes both columns.
-- [ ] `reconcileRepoPages` inside the existing transaction, mirroring
+- [x] `reconcileRepoPages` inside the existing transaction, mirroring
       `reconcileDocuments`: hash-map read, content-hash gate, upsert
       changed, delete absent; `ReconcileResult` gains
       `PagesUpserted/PagesDeleted/PagesUnchanged` +
       `UpsertedPagePaths/DeletedPagePaths`.
-- [ ] Store integration tests (`//go:build integration`): round-trip, gate
+- [x] Store integration tests (`//go:build integration`): round-trip, gate
       no-op on unchanged hash, delete-absent, disable-at-HEAD (empty
       inputs) wipes rows and nulls both columns; migration up/down.
-- [ ] `just test` / `just lint` / `just fmt` green; commit.
+- [x] `just test` / `just lint` / `just fmt` green; commit.
 
 #### Success Criteria
 
@@ -190,6 +190,15 @@ discipline documents have; nothing reads it yet.
   input reports all-unchanged and writes nothing; removing a page deletes
   its row; empty pages + empty api fields leave the repo exactly as a
   never-opted-in repo.
+
+**Status: COMPLETE ✅** (2026-08-28) — migration
+`20260828000000_add_repo_pages.sql` (up/down proven by
+`TestMigrateUpDownRoundTrip`); the five pages queries generated
+(`generate-check` clean; a second sqlc jsonb override keeps nullable
+JSONB as `json.RawMessage`); `reconcileRepoPages` runs third in the one
+transaction; `TestReconcileRepoPages` (real Postgres) proves every
+success criterion including disable-at-HEAD wiping rows and nulling both
+api columns.
 
 ### Phase 3: Fetch and ingest — the hint, the widened filter, the classifier
 
