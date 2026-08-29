@@ -208,17 +208,17 @@ today.
 
 #### Tasks
 
-- [ ] `internal/githubapp` `apiHint(configYAML)` (third hint beside
+- [x] `internal/githubapp` `apiHint(configYAML)` (third hint beside
       `docsDirHint`/`changelogHint`): enabled / landing page / exclude /
       additional docs, docz defaults on malformed yaml, `./` +
       trailing-`/` trimmed; unit table mirroring `TestChangelogHint`.
-- [ ] `classifyTree`: when the hint is enabled, keep every `.md` under the
+- [x] `classifyTree`: when the hint is enabled, keep every `.md` under the
       docs dir (exclusion pruning stays in ingest); landing-page
       `findBlobSHA` at the hint's path (fallback `docs_dir/index.md`);
       per-entry `additional_docs` `findBlobSHA` (absent ⇒ zero requests).
       When dormant: today's keep-set, provably (withheld-blob stub tests —
       the `TestFetchRepoChangelog` technique).
-- [ ] `internal/ingest`: `buildPages(cfg, blobs)` implementing the six
+- [x] `internal/ingest`: `buildPages(cfg, blobs)` implementing the six
       classifier rules (DESIGN-0004): landing-page skip, over-fetch guard,
       templates/exclude pruning, type-dir discrimination (README kept as
       the directory page; `IsDoczFile` + frontmatter → document; stray →
@@ -226,17 +226,17 @@ today.
       serves; loser path-addressed), additional-docs mapping. Collision
       rule (design OQ-1a): the docs-dir page wins deterministically; the
       additional doc is skipped with a Warn naming both files.
-- [ ] Title mapping: `docparse.Title(content)`; fallback title-cased
+- [x] Title mapping: `docparse.Title(content)`; fallback title-cased
       basename for file pages, directory name for directory pages (new
       small helper + tests).
-- [ ] `Service.Run` wires pages into `ReconcileInput` and the api fields
+- [x] `Service.Run` wires pages into `ReconcileInput` and the api fields
       into `RepoInput` from the **post-Load** config; an invalid enabled
       block still fails the whole ingest via the existing `Validate` path
       (no new error path).
-- [ ] Unit tests: the classifier table (every rule above gets a row — the
+- [x] Unit tests: the classifier table (every rule above gets a row — the
       type-dir README kept is its own named case), hint tables, dormant
       byte-for-byte fetch.
-- [ ] `just test` / `just lint` / `just fmt` green; commit.
+- [x] `just test` / `just lint` / `just fmt` green; commit.
 
 #### Success Criteria
 
@@ -247,6 +247,18 @@ today.
   identical to today's — proven by tests, not asserted.
 - The collision case is deterministic and Warn-logged; the type-dir
   README survives.
+
+**Status: COMPLETE ✅** (2026-08-28) — `apiHint` + `landingPath` +
+`fetchAdditionalDocs` in githubapp with the widened `classifyTree`
+(dormant keep-set byte-for-byte, proven by withheld-blob stubs — which
+caught an ungated dormant additional_docs fetch during development);
+`internal/ingest/pages.go` holds the `pageClassifier` (six rules,
+README-claim precomputation so an excluded README yields to a lone
+index) + `fallbackTitle` + `apiFields`; `Service.Run` wires
+`Pages`/`APILandingPage`/`APIAdditionalDocs`; `TestBuildPagesClassifier`
+drives every rule through one widened blob set and
+`TestRunMapsAPIBlock` proves the wiring + the invalid-enabled-block
+failure through the existing Validate path.
 
 ### Phase 4: Serve — the pages endpoints and spec 1.3.0
 
