@@ -104,17 +104,24 @@ narrowing), so the existing suite doubles as the regression gate.
 
 #### Tasks
 
-- [ ] Run the PLAN-flip fleet check (DESIGN-0004's SQL) against the
+- [x] Run the PLAN-flip fleet check (DESIGN-0004's SQL) against the
       deployed database; for each hit, commit `types.plan.enabled: true`
       upstream in that repo or record the accepted deletion **here**. This
       gates the *deploy* of the bump, not the merge.
-- [ ] Bump the pin: `go get github.com/donaldgifford/docz@v1.2.0` (**never**
+      **Outcome (2026-08-28): clean — zero hits.** No deployment (and no
+      database) exists right now, so the deletion risk is vacuous; the
+      check was run config-side instead: all 21 fleet manifests (20 repos
+      from a `.docz.yaml` code search + the docz repo itself) carry an
+      explicit `types:` block at HEAD, so no repo relies on the
+      default-enabled PLAN type at all. Re-run the SQL form only if a
+      pre-bump Postgres volume is ever restored.
+- [x] Bump the pin: `go get github.com/donaldgifford/docz@v1.2.0` (**never**
       a bare `go mod tidy`), `go mod edit -fmt`; confirm no import-path
       changes and no new transitive requirements.
-- [ ] R1–R6 green unchanged — the changelog trailing-period narrowing must
+- [x] R1–R6 green unchanged — the changelog trailing-period narrowing must
       not touch any pinned case (INV-0008 Observation 3 says it doesn't;
       prove it).
-- [ ] Add `internal/doczcontract/api_test.go` (R10, the R6 mold: own file,
+- [x] Add `internal/doczcontract/api_test.go` (R10, the R6 mold: own file,
       doc-comment header, temp-dir + `HOME`-override loader): dormancy
       (absent block zero values; disabled block with hostile paths loads +
       validates clean), normalization (`./` strip, trailing-`/` collapse,
@@ -124,9 +131,9 @@ narrowing), so the existing suite doubles as the regression gate.
       segment → all `errors.Is(err, doczcfg.ErrInvalidAPIPath)`), and
       `docparse.Title` (ATX + inline strip, setext, frontmatter skipped,
       frontmatter `title:` ignored → `""`, prose-only → `""`).
-- [ ] Update `internal/doczcontract/doc.go` (R1–R6 → R1–R6+R10) and the
+- [x] Update `internal/doczcontract/doc.go` (R1–R6 → R1–R6+R10) and the
       CLAUDE.md docz-pin note (`v1.1.0` → `v1.2.0`).
-- [ ] `just test` / `just lint` / `just fmt` green; commit
+- [x] `just test` / `just lint` / `just fmt` green; commit
       (`feat(doczcontract): pin docz v1.2.0 + freeze the api surface (R10)`).
 
 #### Success Criteria
@@ -138,6 +145,14 @@ narrowing), so the existing suite doubles as the regression gate.
   it fail).
 - The fleet-check outcome is recorded here before the release containing
   the bump deploys.
+
+**Status: COMPLETE ✅** (2026-08-28) — pin bumped `v1.1.0 → v1.2.0`
+(one-line `go.mod` change, two `go.sum` lines, no new transitive deps);
+R1–R6 green unchanged on the new pin; `api_test.go` freezes R10
+(defaults/dormancy/normalization/enabled-validation/`Title`, all five
+groups) with the revert drill proven (flipped the docs_dir-tracking
+backfill case → loud failure → restored green); `docparse` joins the
+alias convention as `doczparse`. Fleet check: clean, recorded above.
 
 ### Phase 2: Persistence — the pages table and the api columns
 
