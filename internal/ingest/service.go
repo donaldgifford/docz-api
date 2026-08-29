@@ -24,11 +24,12 @@ import (
 var tracer = otel.Tracer("github.com/donaldgifford/docz-api/internal/ingest")
 
 // repoStore is the persistence surface the pipeline needs: reconcile a repo in
-// one transaction, then read back the documents that changed so they can be
-// pushed to the search index. *store.Store satisfies it.
+// one transaction, then read back the documents and pages that changed so they
+// can be pushed to the search index. *store.Store satisfies it.
 type repoStore interface {
 	ReconcileRepo(ctx context.Context, in *store.ReconcileInput) (store.ReconcileResult, error)
 	GetDocumentsByIDs(ctx context.Context, repoID int64, docIDs []string) ([]store.Document, error)
+	GetRepoPagesByPaths(ctx context.Context, repoID int64, paths []string) ([]store.RepoPage, error)
 }
 
 // Indexer is the narrow Meilisearch surface ingest needs after a reconcile
@@ -189,10 +190,10 @@ func (s *Service) indexSearch(ctx context.Context, owner, name string, result *s
 	}
 }
 
-// syncIndex deletes removed documents from the index by primary key, then
-// fetches the full rows for the upserted (new/changed) documents and indexes
-// them. It reuses the reconcile's content-hash gate: only changed doc ids reach
-// the index.
+// syncIndex deletes removed documents and pages from the index by primary
+// key, then fetches the full rows for the upserted (new/changed) ones and
+// indexes them — one delete call, one index call. It reuses the reconcile's
+// content-hash gates: only changed doc ids and page paths reach the index.
 func (s *Service) syncIndex(
 	ctx context.Context, owner, name string, result *store.ReconcileResult,
 ) (err error) {
@@ -204,31 +205,58 @@ func (s *Service) syncIndex(
 		span.End()
 	}()
 
-	if len(result.DeletedDocIDs) > 0 {
-		ids := make([]string, len(result.DeletedDocIDs))
-		for i, docID := range result.DeletedDocIDs {
-			ids[i] = primaryKey(result.RepoID, docID)
-		}
+	ids := make([]string, 0, len(result.DeletedDocIDs)+len(result.DeletedPagePaths))
+	for _, docID := range result.DeletedDocIDs {
+		ids = append(ids, primaryKey(result.RepoID, docID))
+	}
+	for _, path := range result.DeletedPagePaths {
+		ids = append(ids, pagePrimaryKey(result.RepoID, path))
+	}
+	if len(ids) > 0 {
 		if err := s.indexer.DeleteDocuments(ctx, ids); err != nil {
 			return fmt.Errorf("delete from index: %w", err)
 		}
 	}
 
-	if len(result.UpsertedDocIDs) == 0 {
-		return nil
-	}
-	rows, err := s.store.GetDocumentsByIDs(ctx, result.RepoID, result.UpsertedDocIDs)
+	docs, err := s.upsertedIndexDocs(ctx, owner, name, result)
 	if err != nil {
-		return fmt.Errorf("fetch upserted docs: %w", err)
+		return err
 	}
-	docs := make([]search.IndexDoc, 0, len(rows))
-	for i := range rows {
-		docs = append(docs, toIndexDoc(owner, name, result.RepoID, &rows[i]))
+	if len(docs) == 0 {
+		return nil
 	}
 	if err := s.indexer.IndexDocuments(ctx, docs); err != nil {
 		return fmt.Errorf("index documents: %w", err)
 	}
 	return nil
+}
+
+// upsertedIndexDocs fetches the rows behind a reconcile's upserted doc ids and
+// page paths and maps them to index records. Both fetches tolerate a row
+// removed since the commit (the result is simply shorter).
+func (s *Service) upsertedIndexDocs(
+	ctx context.Context, owner, name string, result *store.ReconcileResult,
+) ([]search.IndexDoc, error) {
+	docs := make([]search.IndexDoc, 0, len(result.UpsertedDocIDs)+len(result.UpsertedPagePaths))
+	if len(result.UpsertedDocIDs) > 0 {
+		rows, err := s.store.GetDocumentsByIDs(ctx, result.RepoID, result.UpsertedDocIDs)
+		if err != nil {
+			return nil, fmt.Errorf("fetch upserted docs: %w", err)
+		}
+		for i := range rows {
+			docs = append(docs, toIndexDoc(owner, name, result.RepoID, &rows[i]))
+		}
+	}
+	if len(result.UpsertedPagePaths) > 0 {
+		rows, err := s.store.GetRepoPagesByPaths(ctx, result.RepoID, result.UpsertedPagePaths)
+		if err != nil {
+			return nil, fmt.Errorf("fetch upserted pages: %w", err)
+		}
+		for i := range rows {
+			docs = append(docs, toIndexPage(owner, name, result.RepoID, &rows[i]))
+		}
+	}
+	return docs, nil
 }
 
 // changelogFile returns the repo-relative changelog path the config opts into,
