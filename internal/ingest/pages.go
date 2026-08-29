@@ -37,34 +37,71 @@ func buildPages(cfg *doczcfg.Config, blobs []BlobEntry) []store.PageInput {
 	// collision, so additional_docs is classified second against `taken`.
 	pages := make([]store.PageInput, 0, len(blobs))
 	taken := make(map[string]string, len(blobs)) // published path -> winning repo path
+	blobByPath := make(map[string]*BlobEntry, len(blobs))
 	for i := range blobs {
 		blob := &blobs[i]
+		blobByPath[blob.Path] = blob
 		published, ok := c.classifyDocsDir(blob.Path)
 		if !ok {
+			continue
+		}
+		// Blob paths come straight from the git tree, which docz's config
+		// validation never sees — a crafted tree can carry dot segments or
+		// control bytes. Ingest is the single writer, so reject hostile keys
+		// here rather than trusting every future reader of the table.
+		if !validPublishedPath(published) {
+			slog.Warn("skipping blob with an unsafe tree path", "path", blob.Path)
 			continue
 		}
 		pages = append(pages, pageInput(blob, published))
 		taken[published] = blob.Path
 	}
 
-	for i := range blobs {
-		blob := &blobs[i]
-		if !c.additional[blob.Path] {
+	// The additional_docs pass iterates the config (validator-clean paths),
+	// not the blobs, so an entry whose file is absent at HEAD is skipped AND
+	// reported — R10: docz never checked existence; that duty is the
+	// consumer's.
+	for _, entry := range cfg.API.AdditionalDocs {
+		if !strings.HasSuffix(entry, ".md") {
+			// DESIGN-0011 clause 1: markdown only — skip and report. Checked
+			// before absence: the fetch skips non-markdown entries too.
+			slog.Warn("skipping non-markdown additional_docs entry", "path", entry)
 			continue
 		}
-		if !strings.HasSuffix(blob.Path, ".md") {
-			// DESIGN-0011 clause 1: markdown only — skip and report.
-			slog.Warn("skipping non-markdown additional_docs entry", "path", blob.Path)
+		blob, ok := blobByPath[entry]
+		if !ok {
+			slog.Warn("additional_docs entry absent at HEAD", "path", entry)
 			continue
 		}
-		if winner, collides := taken[blob.Path]; collides {
+		if winner, collides := taken[entry]; collides {
 			slog.Warn("additional_docs entry collides with a docs_dir page; the docs_dir page wins",
-				"published_path", blob.Path, "docs_dir_file", winner, "additional_doc", blob.Path)
+				"published_path", entry, "docs_dir_file", winner)
 			continue
 		}
-		pages = append(pages, pageInput(blob, blob.Path))
+		pages = append(pages, pageInput(blob, entry))
 	}
 	return pages
+}
+
+// validPublishedPath reports whether a published path derived from a git
+// tree is a lookup-safe key: relative, forward-slash separated, no "." /
+// ".." / empty segments, no backslashes, no control bytes — the same rules
+// the serve layer re-applies to decoded URL paths on read.
+func validPublishedPath(p string) bool {
+	if p == "" || strings.HasPrefix(p, "/") || strings.ContainsRune(p, '\\') {
+		return false
+	}
+	for _, r := range p {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	for _, seg := range strings.Split(p, "/") {
+		if seg == "" || seg == "." || seg == ".." {
+			return false
+		}
+	}
+	return true
 }
 
 // pageClassifier holds the enabled api: block's resolved path sets, all in
@@ -74,7 +111,6 @@ type pageClassifier struct {
 	landing    string          // resolved landing page (repo-relative)
 	exclude    []string        // repo-relative excluded prefixes, templates included
 	typeDirs   []string        // enabled types' dirs (repo-relative)
-	additional map[string]bool // additional_docs entries (repo-relative)
 	readmeDirs map[string]bool // docs_dir-relative dirs claimed by a README.md
 }
 
@@ -85,7 +121,6 @@ func newPageClassifier(cfg *doczcfg.Config) *pageClassifier {
 		docsDir:    docsDir,
 		landing:    cfg.API.LandingPage,
 		exclude:    []string{path.Join(docsDir, doczcfg.TemplatesDir)},
-		additional: make(map[string]bool, len(cfg.API.AdditionalDocs)),
 		readmeDirs: make(map[string]bool),
 	}
 	for _, entry := range cfg.API.Exclude {
@@ -93,9 +128,6 @@ func newPageClassifier(cfg *doczcfg.Config) *pageClassifier {
 	}
 	for _, name := range cfg.EnabledTypes() {
 		c.typeDirs = append(c.typeDirs, filepath.ToSlash(cfg.TypeDir(name)))
-	}
-	for _, entry := range cfg.API.AdditionalDocs {
-		c.additional[entry] = true
 	}
 	return c
 }

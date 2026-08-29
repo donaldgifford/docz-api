@@ -172,6 +172,39 @@ api:
 	}
 }
 
+// TestBuildPagesSkipsAbsentAdditionalDoc pins the R10 skip-and-report duty:
+// an entry whose file is absent at HEAD produces no page (and a Warn) rather
+// than an error.
+func TestBuildPagesSkipsAbsentAdditionalDoc(t *testing.T) {
+	cfg := loadPagesConfig(t, `docs_dir: docs
+api:
+  enabled: true
+  additional_docs: [MISSING.md]
+`)
+	if pages := buildPages(&cfg, nil); len(pages) != 0 {
+		t.Errorf("pages = %+v, want none for an absent entry", pages)
+	}
+}
+
+// TestBuildPagesRejectsHostileTreePaths proves the single-writer guard: blob
+// paths come from the git tree, which docz's config validation never sees, so
+// a crafted tree's dot segments and control bytes must never become store
+// keys.
+func TestBuildPagesRejectsHostileTreePaths(t *testing.T) {
+	cfg := loadPagesConfig(t, "docs_dir: docs\napi:\n  enabled: true\n")
+	blobs := []BlobEntry{
+		pblob("docs/../secret.md", "# escape"),      // publishes "../secret.md" unguarded
+		pblob("docs/./sneaky.md", "# dot"),          // "." segment
+		pblob("docs/a\nb.md", "# control"),          // control byte
+		pblob("docs/back\\slash.md", "# backslash"), // backslash
+		pblob("docs/fine.md", "# Fine"),
+	}
+	pages := buildPages(&cfg, blobs)
+	if len(pages) != 1 || pages[0].Path != "fine.md" {
+		t.Fatalf("pages = %+v, want only fine.md (hostile tree paths rejected)", pages)
+	}
+}
+
 func TestFallbackTitle(t *testing.T) {
 	tests := []struct {
 		in, want string

@@ -431,8 +431,12 @@ func TestFetchAPIPages(t *testing.T) {
 		}
 	})
 
-	t.Run("additional docs fetched when present, zero requests when absent", func(t *testing.T) {
-		snap := run(t, "api:\n  enabled: true\n  additional_docs: [CONTRIBUTING.md, MISSING.md]\n",
+	t.Run("additional docs fetched when present, zero requests when absent or non-markdown", func(t *testing.T) {
+		// README.md is present in the tree but withheld from the stub: a
+		// non-markdown entry ("LICENSE"-style, here the extensionless
+		// README-as-decoy is stood in by listing a present non-md path) must
+		// not be requested at all. The stub 404s any unexpected sha.
+		snap := run(t, "api:\n  enabled: true\n  additional_docs: [CONTRIBUTING.md, MISSING.md, README]\n",
 			map[string]string{
 				"docsha": b64("---\nid: RFC-0001\n---\n"), "rfcreadmesha": b64("# RFCs"),
 				"guidesha": b64("# Setup"), "tmplsha": b64("template"),
@@ -444,8 +448,8 @@ func TestFetchAPIPages(t *testing.T) {
 			if b.Path == "CONTRIBUTING.md" {
 				contrib = b.GitSHA == "contribsha" && string(b.Content) == "# Contributing"
 			}
-			if b.Path == "MISSING.md" {
-				t.Error("MISSING.md fetched, want zero requests for an absent entry")
+			if b.Path == "MISSING.md" || b.Path == "README" {
+				t.Errorf("%s fetched, want zero requests (absent / non-markdown)", b.Path)
 			}
 		}
 		if !contrib {

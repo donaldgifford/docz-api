@@ -168,11 +168,17 @@ func landingPath(docsDir string, api *apiHints) string {
 // fetchAdditionalDocs resolves each additional_docs entry against the
 // already-listed tree: one blob request per present file, zero for absent
 // ones (R10: docz never checked existence; ingest skips and reports).
+// Non-markdown entries are skipped without a request — ingest discards them
+// anyway (DESIGN-0011 clause 1) and warns from the config, so there is no
+// point buffering bytes that will never publish.
 func (c *Client) fetchAdditionalDocs(
 	ctx context.Context, owner, name string, tree *github.Tree, entries []string,
 ) ([]ingest.BlobEntry, error) {
 	var blobs []ingest.BlobEntry
 	for _, entry := range entries {
+		if !strings.HasSuffix(entry, ".md") {
+			continue
+		}
 		sha := findBlobSHA(tree, entry)
 		if sha == "" {
 			continue
@@ -196,7 +202,10 @@ func docsDirHint(configYAML []byte) string {
 		DocsDir string `yaml:"docs_dir"`
 	}
 	if err := yaml.Unmarshal(configYAML, &cfg); err == nil && cfg.DocsDir != "" {
-		return strings.TrimSuffix(cfg.DocsDir, "/")
+		// hintPath keeps the hint aligned with docz's normalization (and the
+		// classifier's cleanRepoDir), so "./docs" targets the same tree
+		// prefix "docs" does.
+		return strings.TrimSuffix(hintPath(cfg.DocsDir), "/")
 	}
 	return doczcfg.DefaultConfig().DocsDir
 }
