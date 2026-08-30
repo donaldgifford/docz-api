@@ -1,7 +1,7 @@
 ---
 id: IMPL-0008
 title: "Serve docz yaml key spellings in config snapshot via docz v1.2.2"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-08-30
 ---
@@ -9,7 +9,7 @@ created: 2026-08-30
 
 # IMPL 0008: Serve docz yaml key spellings in config snapshot via docz v1.2.2
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-30
 
@@ -137,14 +137,14 @@ is wrong, and the bump stops until it's understood.
 
 #### Tasks
 
-- [ ] Bump the pin: `go get github.com/donaldgifford/docz@v1.2.2`
+- [x] Bump the pin: `go get github.com/donaldgifford/docz@v1.2.2`
       (**never** a bare `go mod tidy`), `go mod edit -fmt`; confirm no
       import-path changes and no new transitive requirements.
-- [ ] Re-run `internal/doczcontract` R1–R6+R10 — green **unchanged** (zero
+- [x] Re-run `internal/doczcontract` R1–R6+R10 — green **unchanged** (zero
       behavior deltas expected; see phase intro).
-- [ ] Update the CLAUDE.md docz-pin note (`v1.2.0` → `v1.2.2`, the
+- [x] Update the CLAUDE.md docz-pin note (`v1.2.0` → `v1.2.2`, the
       json-tags rationale, R11 forward-reference).
-- [ ] `just test` / `just lint` / `just fmt` green; commit
+- [x] `just test` / `just lint` / `just fmt` green; commit
       (`fix(doczcontract): pin docz v1.2.2 — json-tagged config marshal`).
 
 #### Success Criteria
@@ -153,6 +153,11 @@ is wrong, and the bump stops until it's understood.
   `go.mod`/`go.sum`, CLAUDE.md, and this doc.
 - R1–R6+R10 pass without a single pinned expectation edited — proving the
   bump changed only what `json.Marshal` emits.
+
+**Status: COMPLETE ✅** (2026-08-30) — pin bumped `v1.2.0 → v1.2.2`
+(one-line `go.mod` change, two `go.sum` lines, no new transitive deps, no
+import-path changes); R1–R6+R10 re-ran green with zero edits; CLAUDE.md
+pin note updated with the json-tags rationale + R11 reference.
 
 ---
 
@@ -166,18 +171,18 @@ source per OQ-3.
 
 #### Tasks
 
-- [ ] Add `internal/doczcontract/snapshot_test.go` (R11, the R6 mold: own
+- [x] Add `internal/doczcontract/snapshot_test.go` (R11, the R6 mold: own
       file, doc-comment header naming the clause, hermetic loader): pin
       the top-level key set and every nested block's key set from the
       Background table; pin the † `omitempty` keys as **absent** on a
       minimal config; pin nil-slice → `null` for the non-`omitempty`
       slice fields (`api.exclude`, `api.additional_docs`, `wiki.exclude`,
       `types.<name>.statuses`).
-- [ ] Prove the clause by revert drill: flip one pinned spelling (or one
+- [x] Prove the clause by revert drill: flip one pinned spelling (or one
       presence expectation), watch it fail loudly, restore green.
-- [ ] Update `internal/doczcontract/doc.go` (R1–R6+R10 → +R11, noting the
+- [x] Update `internal/doczcontract/doc.go` (R1–R6+R10 → +R11, noting the
       upstream DESIGN-0008 R11 ratification it mirrors).
-- [ ] `just test` / `just lint` / `just fmt` green; commit
+- [x] `just test` / `just lint` / `just fmt` green; commit
       (`test(doczcontract): freeze the marshaled snapshot shape (R11)`).
 
 #### Success Criteria
@@ -185,6 +190,19 @@ source per OQ-3.
 - A docz bump that renames a serialized key, drops a tag, or flips an
   `omitempty` fails R11 in this repo's suite with a message naming the
   block and key — verified by the revert drill.
+
+**Status: COMPLETE ✅** (2026-08-30) — `snapshot_test.go` pins the exact
+per-block key sets on a full fixture (`TestSnapshotKeySpellings`) and the
+presence semantics on a minimal one (`TestSnapshotPresenceSemantics`):
+† keys absent, nil non-`omitempty` slices `null`, `template` present when
+empty, and dormant `changelog:`/`api:` blocks serializing an explicit
+`enabled: false` (the exact value the docz-site gates read). Probed
+empirically before pinning: with an explicit `types:` block the built-in
+types do **not** merge in, and the default wiki carries
+`plugins`/`exclude`/`nav_titles` (so the minimal fixture asserts the five
+† wiki keys absent rather than an exact default set). Revert drill proven
+(flipped `additional_docs` → `additionalDocs` → loud failure naming the
+block → restored). `doc.go` now reads R1–R6+R10+R11.
 
 ---
 
@@ -195,7 +213,7 @@ in the docs, and close the issue.
 
 #### Tasks
 
-- [ ] Tighten the assertions that only check non-emptiness today:
+- [x] Tighten the assertions that only check non-emptiness today:
       `internal/e2e` repo-detail decodes the served `config_snapshot` and
       asserts the yaml spellings for the blocks docz-site gates on
       (`docs_dir`, `changelog.enabled`, `api.enabled` present under their
@@ -204,15 +222,15 @@ in the docs, and close the issue.
       carries `"docs_dir"` rather than just being non-empty. (The
       handler/e2e fixtures already use lowercase keys — the bump makes
       them correct rather than aspirational; leave them as-is.)
-- [ ] Docs sweep for the old shape: `deploy/README.md` gains the rollout
+- [x] Docs sweep for the old shape: `deploy/README.md` gains the rollout
       note (snapshots refresh **naturally** on each repo's next ingest;
       a push or `-onboard` nudge clears stragglers at fleet scale; no
       backfill — and no deployment exists today, so no stale rows exist
       anywhere); spec touch per OQ-2; confirm CLAUDE.md/`api/README.md`
       make no old-shape claims.
-- [ ] Final gates: `just ci` green; `docz update` (restore any TOC
+- [x] Final gates: `just ci` green; `docz update` (restore any TOC
       underscore-anchor damage); flip this doc → Completed.
-- [ ] Open the PR (`patch` label — a wire fix, no new surface) with
+- [x] Open the PR (`patch` label — a wire fix, no new surface) with
       `Closes #25`; note the docz-site follow-through lives in
       docz-site#21's re-vendor loop.
 
@@ -222,6 +240,15 @@ in the docs, and close the issue.
   `config_snapshot` with yaml-spelled keys through the read API.
 - `just ci` green; the PR closes [#25] on merge; docs state the natural
   refresh so nobody hunts for a backfill job later.
+
+**Status: COMPLETE ✅** (2026-08-30) — `TestE2EOnboardAndServe` now
+decodes the served `config_snapshot` and asserts the yaml-spelled
+`docs_dir`/`changelog`/`api` keys present with no capitalized Go field
+names (proven against real Postgres); `service_test` asserts the
+marshaled snapshot the same way at the unit seam. Spec `1.4.1`
+(config_snapshot description: spellings, optional keys, `null` lists;
+vacuum still 100/100); `api/README.md` version history + `deploy/
+README.md` natural-refresh rollout note landed. `just ci` green.
 
 ---
 
