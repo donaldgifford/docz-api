@@ -259,6 +259,8 @@ alternatives; anything else, write it in.
 
 ### 1. How deep does the R11 clause pin the marshaled shape?
 
+**Answered `1a` (2026-08-30).** Key-set + presence-semantics pin.
+
 - **a. (Recommendation) Key-set + presence-semantics pin.** Marshal, decode
   to `map[string]json.RawMessage` per block, and assert each block's
   **exact key set** from the Background table, the † keys' absence on a
@@ -284,6 +286,8 @@ alternatives; anything else, write it in.
 `config_snapshot` is `type: object, additionalProperties: true` in the
 spec — the wire *type* doesn't change, only the keys inside it.
 
+**Answered `2a` (2026-08-30).** Description update + patch bump `1.4.1`.
+
 - **a. (Recommendation) Editorial description update + patch bump
   (`1.4.0 → 1.4.1`).** Extend the `config_snapshot` description: keys use
   the `.docz.yaml` spellings; `omitempty` keys are optional (absent when
@@ -301,6 +305,8 @@ spec — the wire *type* doesn't change, only the keys inside it.
   change for zero consumer benefit over the R11 clause.
 
 ### 3. What does the R11 clause marshal — a loaded config or a struct literal?
+
+**Answered `3a` (2026-08-30).** Fixture yaml through `doczcfg.Load`.
 
 - **a. (Recommendation) A fixture `.docz.yaml` through `doczcfg.Load`**
   (the hermetic `HOME`-override loader every existing clause uses). That
