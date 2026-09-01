@@ -142,18 +142,18 @@ Remove the carve-out and repin the classifier's behavior at the unit seam.
 
 #### Tasks
 
-- [ ] Delete the `p == td+"/"+readmeName` branch from `classifyDocsDir`
+- [x] Delete the `p == td+"/"+readmeName` branch from `classifyDocsDir`
       rule 4 and route `README.md` per OQ-1's answer; rewrite the rule-4
       comment (type dirs publish nothing; docz docs stay
       `buildDocuments`'s business; strays keep skip+Warn).
-- [ ] Update `TestBuildPagesClassifier`: keep the `docs/rfc/README.md` blob
+- [x] Update `TestBuildPagesClassifier`: keep the `docs/rfc/README.md` blob
       in the fixture but drop `"rfc"` from the wanted published paths (the
       blob now proves **absence**); replace the rfc-page assertions with an
       explicit not-published check; fix the ContentHash comparator that
       referenced the rfc page; update the rule-4 fixture comments.
-- [ ] Per OQ-1's answer, assert the log behavior for a type-dir README
+- [x] Per OQ-1's answer, assert the log behavior for a type-dir README
       (no Warn if 1a; Warn if 1b) alongside the existing stray-file case.
-- [ ] `just fmt` + `just lint` clean; commit
+- [x] `just fmt` + `just lint` clean; commit
       (`fix(ingest): stop publishing type-dir READMEs as pages`).
 
 #### Success Criteria
