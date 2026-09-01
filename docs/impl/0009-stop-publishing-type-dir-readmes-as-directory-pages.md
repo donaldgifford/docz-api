@@ -284,6 +284,14 @@ forever.
 
 ### 2. Narrow the fetch to stop downloading type-dir READMEs?
 
+**Answered `2a` (2026-09-01).** One authoritative parse, one place that
+decides: the fetch keeps its deliberately dumb "every `.md` under
+`docs_dir`" over-fetch, and the classifier — which holds the fully parsed
+config and already knows the type dirs — is the single point of exclusion.
+Teaching the download step about `types:` would replicate classifier logic
+in a second place that can drift, to save one tiny README per type dir per
+ingest.
+
 `classifyTree` fetches every `.md` under `docs_dir` when the api block is
 enabled, so type-dir READMEs are still downloaded and then classified to
 nothing.
