@@ -172,15 +172,15 @@ Prove the full pipeline — ingest, serve, search — through the real stack.
 
 #### Tasks
 
-- [ ] Add a `docs/frameworks/README.md` blob (the fixture's enabled type
+- [x] Add a `docs/frameworks/README.md` blob (the fixture's enabled type
       dir) to `TestE2ERepoPagesServeAndDisable`'s blob set.
-- [ ] Assert the pages list still has exactly its 3 pages (additional doc,
+- [x] Assert the pages list still has exactly its 3 pages (additional doc,
       file page, rule-5 directory page), `GET
       /api/v1/repos/acme/paged/pages/frameworks` 404s, and search returns
       no `source: "page"` hit for the type-dir README's content.
-- [ ] Run the integration suites (`just test-integration`) against real
+- [x] Run the integration suites (`just test-integration`) against real
       Postgres + Meilisearch.
-- [ ] Commit (`test(e2e): prove type dirs publish no pages`).
+- [x] Commit (`test(e2e): prove type dirs publish no pages`).
 
 #### Success Criteria
 
