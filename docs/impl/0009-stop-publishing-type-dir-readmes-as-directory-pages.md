@@ -258,6 +258,12 @@ change removes.
 
 ### 1. Where does the type-dir README land after the carve-out is gone?
 
+**Answered `1a` (2026-09-01).** The README is still fetched at ingest and
+is not an error — it just never becomes a page row. The type surface at
+`/:owner/:repo/<type>` belongs to the doc-types side (the site builds it
+from the docs/types data); the duplication under `/pages/<dir>` is exactly
+what goes away, so no Warn: it's expected content, not a stray.
+
 With the carve-out deleted, a type dir's `README.md` falls through to
 rule 4's remaining arms: it fails `IsDoczFile`, so untouched code would hit
 the stray-file **skip + Warn**. But this README is not a stray — `docz
@@ -297,6 +303,10 @@ nothing.
 
 ### 3. Spec surface: bump for the behavior change?
 
+**Answered `3a` (2026-09-01).** The schema doesn't change — the rows just
+stop showing up for the site to render under pages; the type surface stays
+the doc-types side's business. No spec change, no version bump.
+
 Neither `api/openapi.yaml` nor `api/README.md` ever stated the type-dir
 README rule; the schemas are untouched and every remaining page kind serves
 identically.
@@ -312,6 +322,8 @@ identically.
 - **Other:** _____
 
 ### 4. Operator-facing rollout note?
+
+**Answered `4a` (2026-09-01).**
 
 Existing deployments keep serving stale type-README page rows until each
 repo's next ingest.
