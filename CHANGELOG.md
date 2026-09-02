@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
+## [unreleased]
+
+### Bug Fixes
+
+- *(ingest)* Stop publishing type-dir READMEs as pages
+
+### Documentation
+
+- *(impl)* IMPL-0009 — stop publishing type-dir READMEs as pages ([#28](https://github.com/donaldgifford/docz-api/issues/28))
+- *(impl)* Record IMPL-0009 OQ answers — 1a 3a 4a
+- *(impl)* Record IMPL-0009 OQ answer — 2a
+- Record the IMPL-0009 type-dir amendment
+
+### Testing
+
+- *(e2e)* Prove type dirs publish no pages
+
 ## [0.8.1] - 2026-08-30
 
 ### Bug Fixes
