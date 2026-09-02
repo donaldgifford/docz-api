@@ -227,9 +227,9 @@ Record the amendment where the old rule is written down, then ship.
       (deploy/README rollout note or none).
 - [x] `docz update` (restore any TOC underscore-anchor damage in other
       docs); flip this doc → Completed with per-phase status blocks.
-- [ ] Final gates: `just ci` green; changelog sync commit
+- [x] Final gates: `just ci` green; changelog sync commit
       (`mise exec -- git-cliff -o CHANGELOG.md`).
-- [ ] Open the PR (`patch` label — a behavior fix, no schema or spec-surface
+- [x] Open the PR (`patch` label — a behavior fix, no schema or spec-surface
       change) with `Closes #28`; note the docz DESIGN-0011 amendment and
       docz-site follow-ups as companion changes in their own repos.
 
@@ -239,6 +239,16 @@ Record the amendment where the old rule is written down, then ship.
 - No doc in the repo still states that type dirs publish their README —
   grep for the old rule text comes back empty outside historical
   IMPL-0007/INV-0008 records.
+
+**Status: COMPLETE ✅** (2026-09-01) — DESIGN-0004 carries an amendment
+block (rule 4, the mapping-table row, and the test-plan line) with the
+consumer rationale; CLAUDE.md's classifier bullet is corrected and the
+pages section leads with the amendment plus the known adjacent
+`buildDocuments` warn; `deploy/README.md` records the natural-refresh
+rollout (OQ-4a). Per OQ-3a no spec change was made — grep confirms
+`api/openapi.yaml` never described the rule, so the contract stays true
+as written at `1.4.1`. `just ci` green end to end; `docz update` run with
+the TOC underscore anchors restored in DESIGN-0004 and INV-0008.
 
 ---
 
