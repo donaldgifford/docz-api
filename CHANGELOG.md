@@ -15,6 +15,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(impl)* Record IMPL-0009 OQ answers — 1a 3a 4a
 - *(impl)* Record IMPL-0009 OQ answer — 2a
 - Record the IMPL-0009 type-dir amendment
+- *(impl)* Close out IMPL-0009 — all three phases complete
 
 ### Testing
 
