@@ -176,9 +176,12 @@ func (c *pageClassifier) classifyDocsDir(p string) (string, bool) {
 	// there on every `docz update`, so warning about it would fire on correct
 	// configuration. Anything else in a docz-managed namespace is more likely
 	// a mistake than an intent: skip + Warn (DESIGN-0011 rule 3).
-	if c.typeDirOf(p) != "" {
-		base := path.Base(p)
-		if base != readmeName && !doczdoc.IsDoczFile(base) {
+	if td := c.typeDirOf(p); td != "" {
+		// The silence is for the dir's OWN README.md — the file `docz update`
+		// regenerates. A README nested deeper (docs/rfc/sub/README.md) is a
+		// human's misplaced directory, so it stays a reported stray like the
+		// index.md beside it.
+		if p != td+"/"+readmeName && !doczdoc.IsDoczFile(path.Base(p)) {
 			slog.Warn("skipping stray file in a docz type directory", "path", p)
 		}
 		return "", false

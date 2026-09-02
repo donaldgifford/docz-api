@@ -174,6 +174,16 @@ captures slog records to pin OQ-1a directly: three type-dir blobs
 (README, document, stray) publish nothing and exactly one — the stray —
 is reported. `just lint` 0 issues; full unit suite green.
 
+A post-phase review pass (style + adversarial correctness) caught one
+real regression in the first cut: gating the silence on `path.Base(p)`
+matched `README.md` at **any** depth under a type dir, so a nested
+`docs/<type>/sub/README.md` — a human's misplaced directory, not a docz
+artifact — went from reported stray to silent, and inconsistently (the
+`index.md` beside it still warned). The check is now the exact path
+(`p != td+"/"+readmeName`), scoping the silence to the file `docz update`
+actually regenerates, with a fixture pinning the distinction
+(revert-drilled: the `path.Base` form fails the test by name).
+
 ---
 
 ### Phase 2: End-to-end proof

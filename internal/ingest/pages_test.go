@@ -199,13 +199,19 @@ api:
 		pblob("docs/rfc/README.md", "# RFC Index"),                // docz-generated: silent
 		pblob("docs/rfc/0001-intro.md", "---\nid: RFC-0001\n---"), // a document: silent
 		pblob("docs/rfc/notes.md", "# Stray"),                     // a stray: skip + Warn
+		// The silence is scoped to the type dir's OWN README. One nested
+		// deeper is a human's misplaced directory, not a docz artifact, so it
+		// stays reported — like the index.md that would sit beside it.
+		pblob("docs/rfc/sub/README.md", "# Nested"),
 	})
 
 	if len(pages) != 0 {
 		t.Fatalf("pages = %+v, want none (type dirs publish nothing)", pages)
 	}
-	if !slices.Equal(w.paths, []string{"docs/rfc/notes.md"}) {
-		t.Errorf("warned paths = %v, want only the stray docs/rfc/notes.md", w.paths)
+	slices.Sort(w.paths)
+	want := []string{"docs/rfc/notes.md", "docs/rfc/sub/README.md"}
+	if !slices.Equal(w.paths, want) {
+		t.Errorf("warned paths = %v, want %v (only the dir's own README is silent)", w.paths, want)
 	}
 }
 
