@@ -1,7 +1,7 @@
 ---
 id: IMPL-0009
 title: "Stop publishing type-dir READMEs as directory pages"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-09-01
 ---
@@ -9,7 +9,7 @@ created: 2026-09-01
 
 # IMPL 0009: Stop publishing type-dir READMEs as directory pages
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-09-01
 
@@ -34,6 +34,7 @@ created: 2026-09-01
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Rollout](#rollout)
+- [Follow-ups](#follow-ups)
 - [Open Questions](#open-questions)
   - [1. Where does the type-dir README land after the carve-out is gone?](#1-where-does-the-type-dir-readme-land-after-the-carve-out-is-gone)
   - [2. Narrow the fetch to stop downloading type-dir READMEs?](#2-narrow-the-fetch-to-stop-downloading-type-dir-readmes)
@@ -164,6 +165,15 @@ Remove the carve-out and repin the classifier's behavior at the unit seam.
   `index.md`) are untouched.
 - `just lint` reports 0 issues.
 
+**Status: COMPLETE ✅** (2026-09-01) — the carve-out is gone: rule 4 now
+returns `"", false` for everything in an enabled type dir, warning only
+when the file is neither the dir's `README.md` nor an `IsDoczFile` match.
+`TestBuildPagesClassifier` keeps the `docs/rfc/README.md` blob as an
+**absence** proof, and the new `TestBuildPagesTypeDirWarnsOnlyForStrays`
+captures slog records to pin OQ-1a directly: three type-dir blobs
+(README, document, stray) publish nothing and exactly one — the stray —
+is reported. `just lint` 0 issues; full unit suite green.
+
 ---
 
 ### Phase 2: End-to-end proof
@@ -189,6 +199,16 @@ Prove the full pipeline — ingest, serve, search — through the real stack.
   page kind is unaffected.
 - Full `just test-integration` green (no other integration test regressed).
 
+**Status: COMPLETE ✅** (2026-09-01) — `TestE2ERepoPagesServeAndDisable`
+gained the enabled type dir's own `docs/frameworks/README.md` and a
+`type dir publishes no page` subtest: the pages list still holds exactly
+its three rows, `GET /pages/frameworks` 404s, and the README's distinctive
+content (`pangolin`) returns no `source: "page"` hit. Green against real
+Postgres + Meilisearch, and the whole `just test-integration` suite
+(including store, queue, search, webhook) passed with nothing else
+regressed. The run also surfaced the `buildDocuments` warn recorded under
+[Follow-ups](#follow-ups).
+
 ---
 
 ### Phase 3: Docs, rollout note, close-out
@@ -197,15 +217,15 @@ Record the amendment where the old rule is written down, then ship.
 
 #### Tasks
 
-- [ ] Amend [DESIGN-0004]: rule-4 text, the mapping-table row for
+- [x] Amend [DESIGN-0004]: rule-4 text, the mapping-table row for
       `docs/impl/README.md`, and the test-plan mention — an amendment note
       referencing [issue #28] + this IMPL (the doc already carries INV-0008
       5a-amendment precedent).
-- [ ] Update CLAUDE.md's IMPL-0007 classifier bullet ("type-dir `README.md`
+- [x] Update CLAUDE.md's IMPL-0007 classifier bullet ("type-dir `README.md`
       is the type's one page" → type dirs publish nothing, per IMPL-0009).
-- [ ] Apply OQ-3's answer (spec bump or none) and OQ-4's answer
+- [x] Apply OQ-3's answer (spec bump or none) and OQ-4's answer
       (deploy/README rollout note or none).
-- [ ] `docz update` (restore any TOC underscore-anchor damage in other
+- [x] `docz update` (restore any TOC underscore-anchor damage in other
       docs); flip this doc → Completed with per-phase status blocks.
 - [ ] Final gates: `just ci` green; changelog sync commit
       (`mise exec -- git-cliff -o CHANGELOG.md`).
@@ -236,13 +256,13 @@ Record the amendment where the old rule is written down, then ship.
 
 ## Testing Plan
 
-- [ ] Unit: `TestBuildPagesClassifier` proves the type-dir README publishes
+- [x] Unit: `TestBuildPagesClassifier` proves the type-dir README publishes
       nothing while every other rule's fixture is byte-identical in outcome.
-- [ ] Unit: log-behavior assertion per OQ-1 (no-Warn vs Warn).
-- [ ] Integration: e2e onboard proves no page row, 404 on the path, no
+- [x] Unit: log-behavior assertion per OQ-1 (no-Warn vs Warn).
+- [x] Integration: e2e onboard proves no page row, 404 on the path, no
       search hit; the existing disable-at-HEAD case continues to prove the
       desired-state deletion machinery this rollout leans on.
-- [ ] Full `just ci` + `just test-integration` as regression gates.
+- [x] Full `just ci` + `just test-integration` as regression gates.
 
 ## Rollout
 
@@ -253,6 +273,22 @@ delivery-GUID dedup makes GitHub redelivery a no-op) or a manual `-onboard`
 nudge — the same natural-refresh story as IMPL-0003/0005/0008. Until then,
 stale rows keep serving; nothing breaks, they're just the duplication this
 change removes.
+
+## Follow-ups
+
+- **`buildDocuments` still warns on the type-dir README.** Surfaced by the
+  Phase 2 e2e run: `buildDocuments` selects blobs by `path.Dir` matching a
+  type dir (not by `IsDoczFile`), so `docs/<type>/README.md` reaches
+  `ParseFrontmatter`, returns `ErrNoFrontmatter`, and logs `skipping doc
+  without frontmatter` on **every ingest of every docz-managed repo**. This
+  is pre-existing — unchanged by IMPL-0009, which only silenced the pages
+  side — but it is the same "Warn fires on correct configuration" problem
+  OQ-1a rejected, so silencing the pages half alone leaves the operator's
+  log unchanged. It also means a genuine stray in a type dir is now
+  reported **twice** (once by each pipeline) for the same file.
+  Deliberately out of scope here: the doc fenced `buildDocuments` off, and
+  touching the documents pipeline carries more blast radius than a page
+  classifier fix. Worth its own small change.
 
 ## Open Questions
 
