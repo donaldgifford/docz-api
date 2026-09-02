@@ -8,6 +8,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ### Bug Fixes
 
 - *(ingest)* Stop publishing type-dir READMEs as pages
+- *(deps)* Bump golang.org/x/crypto to v0.55.0 (CVE-2026-56854)
 
 ### Documentation
 
