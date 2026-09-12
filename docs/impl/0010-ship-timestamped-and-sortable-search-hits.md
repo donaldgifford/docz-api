@@ -107,7 +107,10 @@ touches shares one transaction timestamp, and the `source` filter the
 - `api/README.md` current-version paragraph + the versioning clarification;
   `CLAUDE.md` Phase 3 gotchas.
 - Marking DESIGN-0005 Implemented and noting the landing in INV-0009.
-- The `google.golang.org/grpc` CVE bump, per OQ-1 (it gates CI either way).
+- The `google.golang.org/grpc` CVE bump as Phase 1's prerequisite task
+  (OQ-1), so the PR's Security Scan is never the blocker.
+- Opening the docz-site follow-up issue once the PR merges (Phase 5's last
+  task) — the site work itself stays out of scope.
 
 ### Out of Scope
 
@@ -132,10 +135,19 @@ last one before a push.
 The read-side fix for issue #34 proper, plus the second date and the zone
 pin, landed together with their spec so the contract test never sees a
 struct/spec mismatch mid-branch. The version bump happens here and holds
-for the rest of the PR.
+for the rest of the PR. The phase opens with the dependency bump the PR's
+Security Scan would otherwise fail on (OQ-1), so every later push is
+judged on its own changes.
 
 #### Tasks
 
+- [ ] **Prerequisite (OQ-1):** bump `google.golang.org/grpc` to `v1.83.2`
+      via `go get google.golang.org/grpc@v1.83.2` + `go mod edit -fmt`
+      (never a bare `go mod tidy` — staged indirect deps get pruned); run
+      the local Trivy scan the CI Security job mirrors
+      (`trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 .`)
+      and `go build ./...`; commit on its own
+      (`chore(deps): bump google.golang.org/grpc to v1.83.2`).
 - [ ] `internal/search/search.go`: add `"created"` and `"updated_at"` to
       `AttributesToRetrieve`; add `Created string` and `UpdatedAt int64` to
       `rawHit`; copy both in `decodeHits`, the stamp through a new
@@ -166,6 +178,9 @@ for the rest of the PR.
 
 #### Success Criteria
 
+- The local Trivy scan reports no HIGH/CRITICAL findings and Dependabot
+  alert #5 closes on push; `go build ./...` and `go vet ./...` clean after
+  the bump.
 - `go test ./internal/search/ ./internal/httpapi/` green, including the
   kin-openapi contract test against the `1.5.0` spec with the two new
   required properties.
@@ -245,14 +260,15 @@ ask for documents or pages only, with accurate totals and offsets.
 - [ ] `internal/search/search.go`: `buildFilter` appends
       `appendEq(parts, "source", p.Source)` after `author`, keeping the
       documented clause order.
-- [ ] `internal/httpapi/search.go`: `Source: q.Get("source")` — validated
-      or passed through per OQ-2.
+- [ ] `internal/httpapi/search.go`: `Source: q.Get("source")`, passed
+      through unvalidated like the four existing facet filters (OQ-2a); a
+      comment says why `source` is not a `400` while `sort` is.
 - [ ] `api/openapi.yaml`: `source` query parameter on `searchDocs`,
       `enum: [doc, page]`, description "Filter by record kind."
 - [ ] Unit tests: `TestBuildFilter` gains a `source` case and an
       all-facets-in-order case including it; httpapi asserts `source=page`
-      reaches the searcher; per OQ-2, either a `400` case or a pass-through
-      assertion.
+      reaches the searcher and that `source=bogus` is passed through (a
+      `200` with whatever the searcher returns — no `400`).
 - [ ] Contract test: `searchDocsSource` case
       (`/api/v1/search?q=intro&source=doc`).
 - [ ] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
@@ -336,17 +352,41 @@ the docz-side status flips.
       placement (inert without the parameter; first = total order), and a
       line on the shared-transaction `updated_at` and the implicit
       secondary key.
-- [ ] Per OQ-1, bump `google.golang.org/grpc` to `v1.83.2` via `go get` +
-      `go mod edit -fmt` (never a bare `go mod tidy`); run the local Trivy
-      scan the CI Security job mirrors.
-- [ ] Per OQ-4, run the live smoke against the compose stack and record
-      the evidence in this phase's status block.
+- [ ] Live smoke (OQ-4a): `docker compose up -d`, `just run`, `-onboard`
+      this repo (it dogfoods the `api:` block, so both record kinds exist),
+      then `curl` the four sorts, `source=doc`, `source=page`, a bogus
+      sort (`400`), and Meilisearch's
+      `GET /indexes/documents/settings/ranking-rules`; record the evidence
+      in this phase's status block.
 - [ ] DESIGN-0005: status `Implemented` + a dated landing note; INV-0009:
       a one-line "landed in IMPL-0010" under the Recommendation.
 - [ ] `docz update` (then revert its underscore-anchor mangling in older
       docs), `just ci` green, `mise exec -- git-cliff -o CHANGELOG.md` +
       `chore(changelog): Auto-sync` as the last commit; open the PR with
-      the OQ-3 label, body ending with the Claude Code footer.
+      the `minor` label (OQ-3a), body ending with the Claude Code footer.
+- [ ] **After the PR merges and the release tags** — open a GitHub issue
+      in `donaldgifford/docz-site` describing what docz-api changed and
+      what the site must do to use it. Title
+      `docz-api v0.10.0 / spec 1.5.0: dated, sortable, source-filterable
+      search hits`. Body sections:
+  - **What changed in docz-api** (link the release, DESIGN-0005, and
+    issue #34): `SearchHit` gains `created` (`YYYY-MM-DD`, `""` on page
+    hits) and `updated_at` (RFC3339 UTC, ingest-observed change time, real
+    on page hits too); `searchDocs` accepts `sort` (enum
+    `updated_at:desc|asc`, `created:desc|asc`; total order; unknown →
+    `400 {"error":"invalid sort"}`) and `source` (`doc|page`);
+    `Document.updated_at` is now always `Z`-suffixed.
+  - **Required to support it**: re-vendor `api/openapi.yaml` at `1.5.0`
+    and regenerate the client (the union types for `sort`/`source` and the
+    two new properties); pass `sort=updated_at:desc` as the directory's
+    default order; update `src/mocks/fixtures.ts` so page hits carry a
+    real `updated_at` and doc hits carry `created`.
+  - **Optional cleanups**: drop the defensive cast in `hitUpdatedAt`
+    (`src/lib/updatedAt.ts`) now that the property is typed; render
+    `created` on the directory card if wanted; use `source=doc` for a
+    documents-only listing instead of client-side filtering.
+  - **Nothing breaks without action**: the column lights up on deploy via
+    the existing defensive read; everything else is additive.
 
 #### Success Criteria
 
@@ -355,6 +395,11 @@ the docz-side status flips.
 - `api/README.md` and the served `/openapi.yaml` agree on `1.5.0`.
 - Every DESIGN-0005 "API / Interface Changes" row is traceable to a
   commit in the PR.
+- The live-smoke evidence is recorded in this phase's status block.
+- The docz-site issue exists, links the docz-api release, and its
+  "required" list matches the shipped contract (the post-merge task is
+  the one item that cannot close before the merge; mark it `deferred —
+  human required` only if the merge itself is pending).
 
 ---
 
@@ -377,7 +422,7 @@ the docz-side status flips.
 | `api/openapi.yaml` | Modify | `SearchHit` fields; `Document.updated_at` wording; `sort`/`source` params; `BadRequest`; `1.5.0` |
 | `api/README.md` | Modify | current version; versioning clarification |
 | `CLAUDE.md` | Modify | Phase 3 gotchas |
-| `go.mod` / `go.sum` | Modify | `grpc v1.83.2` (OQ-1) |
+| `go.mod` / `go.sum` | Modify | `grpc v1.83.2` (Phase 1 prerequisite, OQ-1) |
 | `docs/design/0005-*.md`, `docs/investigation/0009-*.md` | Modify | status / landing notes |
 | `CHANGELOG.md` | Modify | git-cliff sync |
 
@@ -396,13 +441,13 @@ the docz-side status flips.
       `Document.updated_at`, `created` passthrough and sort, `400` through
       the real router.
 - [ ] Spec (`just lint-openapi`): vacuum 100/100, yamlfmt canonical.
-- [ ] Live smoke (OQ-4): compose stack + `just run`, this repo onboarded,
+- [ ] Live smoke (OQ-4a): compose stack + `just run`, this repo onboarded,
       `curl` the four sorts, `source=doc`, a bogus sort, and the
       Meilisearch `GET /indexes/documents/settings/ranking-rules`.
 
 ## Rollout
 
-- One PR, one release (OQ-3). On deploy the new binary's `EnsureIndex`
+- One PR, one `minor` release (OQ-3a). On deploy the new binary's `EnsureIndex`
   applies the ranking-rule order before serving; during a rolling update
   old pods never send `sort`, so their results are unchanged.
 - `Document.updated_at` gains a `Z` suffix only on hosts whose process zone
@@ -413,9 +458,10 @@ the docz-side status flips.
 
 ## Follow-ups
 
-- **docz-site**: re-vendor `1.5.0`; drop the `hitUpdatedAt` cast; pass
+- **docz-site**: tracked by the issue Phase 5's last task opens after the
+  merge (re-vendor `1.5.0`; drop the `hitUpdatedAt` cast; pass
   `sort=updated_at:desc` as the directory default; render `created`;
-  fixtures emit real page stamps.
+  fixtures emit real page stamps).
 - **Pages endpoints**: `updated_at` on `PageSummary`/`Page` (own minor
   bump).
 - **Staleness automation** (e.g. "not updated in 180 days"): builds on
@@ -428,7 +474,9 @@ the docz-side status flips.
 ## Open Questions
 
 Each question is numbered; option **a** is the recommendation, later
-letters are alternatives, and **Other** is free-form.
+letters are alternatives, and **Other** is free-form. **All four answered
+2026-09-12**; the decision line under each question is authoritative and
+the phases above already reflect it.
 
 ### 1. Where does the grpc CVE bump go?
 
@@ -447,6 +495,10 @@ The open Dependabot alert on `google.golang.org/grpc` (`>= 1.83.0,
   CI stays red until it does.
 - Other: \_\_\_\_\_
 
+**Answered `1a`, positioned as Phase 1's prerequisite task** (same
+branch, own commit, first thing pushed) so the Security Scan never blocks
+the implementation PR.
+
 ### 2. Validate the source filter value, or pass it through?
 
 `sort` is validated with a `400` because a silently ignored sort changes
@@ -463,6 +515,8 @@ value simply matches nothing.
   and it adds a second allowlist for two values.
 - Other: \_\_\_\_\_
 
+**Answered `2a`.** Pass-through; the spec enum documents the values.
+
 ### 3. Which semver label does the PR carry?
 
 - **a (recommended): `minor`** → `v0.10.0`. New API surface (two response
@@ -473,6 +527,8 @@ value simply matches nothing.
   always meant to be there"); undersells the sort and source additions
   that consumers will pin against.
 - Other: \_\_\_\_\_
+
+**Answered `3a`.** `minor` → `v0.10.0`.
 
 ### 4. Run a live smoke against the compose stack?
 
@@ -487,13 +543,19 @@ value simply matches nothing.
   claim; skip the manual step.
 - Other: \_\_\_\_\_
 
+**Answered `4a`.** Live smoke runs in Phase 5 and its evidence is recorded
+there.
+
 ## Dependencies
 
 - None new. `meilisearch-go v0.36.3` already exposes `SearchRequest.Sort`
   and `GetRankingRulesWithContext`; `kin-openapi v0.144.0` validates enum
   query parameters.
-- OQ-1 decides whether the grpc bump is a prerequisite PR or a commit here.
-- docz-site follow-ups are **deferred — human required** (separate repo).
+- The grpc bump is Phase 1's first commit on the implementation branch
+  (OQ-1); nothing external gates the PR.
+- The docz-site work is a separate repo: this plan's only obligation is
+  the follow-up issue Phase 5 opens after the merge. The site changes
+  themselves are **deferred — human required**.
 
 ## References
 
