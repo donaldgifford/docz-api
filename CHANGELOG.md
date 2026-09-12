@@ -14,6 +14,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(design)* DESIGN-0005 — record decision 1a; status Approved
 - *(impl)* IMPL-0010 — ship timestamped and sortable search hits (from DESIGN-0005)
 - *(impl)* IMPL-0010 — record OQ answers; grpc bump as Phase 1 prerequisite; docz-site issue task
+- *(impl)* IMPL-0010 — grpc prerequisite landed early in the docs PR
 
 ## [0.9.0] - 2026-09-02
 
