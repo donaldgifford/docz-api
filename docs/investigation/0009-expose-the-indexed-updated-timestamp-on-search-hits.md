@@ -304,9 +304,19 @@ informed:
   sort only breaks ties among equally relevant hits. A "newest first"
   directory view (empty query, filters only) sorts cleanly because every hit
   ties on relevance; a "newest first" *search* would not behave as a user
-  expects unless `sort` is moved ahead of the relevance rules, which changes
-  ranking for every query. That is a real design choice, which is why the
-  issue is right to keep it separate (OQ-5).
+  expects unless `sort` is moved ahead of the relevance rules.
+- **The placement is cheaper than it looks.** The `sort` ranking rule is
+  inert unless the request carries a `sort` parameter, so moving it to the
+  front of the list changes the order of **sorted requests only** — an
+  unsorted search keeps pure relevance either way. The choice is therefore
+  about what a requested sort *means*: a tie-break within relevance (current
+  position) or a total order over the matches (first position, the
+  GitHub-issues convention). Applying it is a settings update through the
+  idempotent `EnsureIndex`, not a reindex. Decided in OQ-5.
+- **`created` sorts as a string.** The index stores it as `YYYY-MM-DD`, which
+  orders lexicographically as chronologically; page records carry `""`, so
+  they sort first ascending and last descending. Acceptable for a
+  doc-oriented "newest" view, worth a line in the spec description.
 
 ## Conclusion
 
@@ -355,7 +365,18 @@ Ship the issue as a single small fix PR, amended per the findings.
 5. `api/README.md` — current-version paragraph: `1.5.0` (and note that
    `1.4.2` was the `groups` editorial bump).
 6. `CLAUDE.md` — one line under the Phase 3 search bullets recording the
-   retrieve-list gotcha, so a future attribute does not repeat F2.
+   retrieve-list gotcha, so a future attribute does not repeat F2, and one
+   for the `sort` ranking-rule placement (F8).
+7. **Sort parameter** (OQ-5): `SearchParams.Sort string`; `searchDocs` reads
+   `sort=` and accepts exactly `updated_at:desc`, `updated_at:asc`,
+   `created:desc`, `created:asc` (the two sortable attributes), rejecting
+   anything else with `400 {"error":"invalid sort"}` — a silently ignored
+   sort is F8's confusion by another route, and the lenient `offset`/`limit`
+   precedent is about defaults, not typos; `Search` passes it as
+   `SearchRequest.Sort`; `EnsureIndex` moves `sort` to the **front** of the
+   ranking rules so a requested sort is a total order over the matches
+   (unsorted searches are unaffected, F8); spec query parameter `sort` with
+   that enum, still under the `1.5.0` bump (additive).
 
 ### Test evidence
 
@@ -367,17 +388,20 @@ Ship the issue as a single small fix PR, amended per the findings.
   `UpdatedAt` on a hit (proves the retrieve list); the e2e search test's
   wire struct gains `updated_at` and asserts it parses as RFC3339 after a
   real onboard.
+- Sort: the integration corpus already has strictly increasing `UpdatedAt`
+  values (`search_integration_test.go:93-125`), so `sort=updated_at:desc`
+  with an empty query asserts the exact reverse order, and the same sort
+  with a query asserts a total order (proves the ranking-rule placement);
+  a unit test pins the allowlist + `400`.
 - `just lint-openapi` stays 100/100.
 
 ### Follow-ups (not part of this change)
 
-- **Sort parameter** (F8) — its own issue; decide the ranking-rule position
-  first.
-- **Pages endpoints** — add `updated_at` to `PageSummary`/`Page` if OQ-1
-  emits it on hits, so a page's detail endpoint is not poorer than its search
-  hit.
+- **Pages endpoints** — add `updated_at` to `PageSummary`/`Page` so a page's
+  detail endpoint is not poorer than its search hit (OQ-1 emits it on hits).
 - **docz-site** — re-vendor `1.5.0`, drop the defensive cast in
-  `hitUpdatedAt`, and update the fixtures per OQ-1.
+  `hitUpdatedAt`, update the fixtures per OQ-1, and pass
+  `sort=updated_at:desc` as the directory's default order.
 - **Commit-dated history** — remains INV-0003 F3; this change does not
   preempt it, and its spec wording (OQ-2) leaves room for a later
   `last_commit_at`.
@@ -385,7 +409,9 @@ Ship the issue as a single small fix PR, amended per the findings.
 ## Open questions
 
 Each question lists lettered options; **a** is the recommendation. Enter a
-different choice under "Other".
+different choice under "Other". **All five were decided on 2026-09-12** —
+1–4 as recommended, 5 against the recommendation; the decision line under
+each question is authoritative and the Recommendation above reflects it.
 
 ### 1. Should page hits emit their real timestamp or an empty string?
 
@@ -400,6 +426,9 @@ different choice under "Other".
   in the same bump.** Fully uniform, but grows a one-file fix into a
   two-surface change.
 - Other: \_\_\_\_\_
+
+**Decision (2026-09-12): a.** Page hits emit their real stamp; the pages
+DTOs stay a follow-up.
 
 ### 2. How should the spec describe what the stamp means?
 
@@ -416,6 +445,9 @@ different choice under "Other".
   work that is not scheduled.
 - Other: \_\_\_\_\_
 
+**Decision (2026-09-12): a.** Both `SearchHit.updated_at` and
+`Document.updated_at` describe the ingest-observed semantics.
+
 ### 3. Should the timezone be pinned to UTC on both endpoints?
 
 - **a. `.UTC()` in the new search formatter and in `nullTimestamp`
@@ -427,6 +459,8 @@ different choice under "Other".
   runs print an offset.
 - Other: \_\_\_\_\_
 
+**Decision (2026-09-12): a.** UTC on both endpoints.
+
 ### 4. Which spec version does a new required response property take?
 
 - **a. `1.5.0`, minor (recommended).** Matches the `1.4.0` precedent
@@ -437,6 +471,9 @@ different choice under "Other".
   re-vendor to the site, but no client is broken by an extra response field.
 - Other: \_\_\_\_\_
 
+**Decision (2026-09-12): a.** `1.5.0`; the sort parameter (OQ-5) is
+additive and rides under the same bump.
+
 ### 5. Does the sort parameter ride along or stay a separate ask?
 
 - **a. Separate ask (recommended).** As #34 says. The ranking-rule placement
@@ -446,6 +483,16 @@ different choice under "Other".
   ranking rules (tie-break only). Cheap, but a "newest first" search that
   visibly is not newest-first is a support question waiting to happen.
 - Other: \_\_\_\_\_
+
+**Decision (2026-09-12): same PR (b, amended).** The docz-site discovery
+list is meant to default to newest-first — most recently updated, or newest
+created — so the timestamp without the sort leaves that page half-built.
+The amendment is the F8 placement finding: since the `sort` ranking rule
+only acts on requests that pass `sort`, it moves to the **front** of the
+ranking rules so a requested sort is a total order (b's tie-break caveat
+goes away) while unsorted searches keep pure relevance. Allowlist is the
+four `field:direction` tokens over `updated_at` and `created`; unknown
+values `400`. Details in the Recommendation change list, item 7.
 
 ## References
 
