@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0005
 title: "Timestamped and sortable search hits"
-status: Draft
+status: Approved
 author: Donald Gifford
 created: 2026-09-12
 ---
@@ -9,7 +9,7 @@ created: 2026-09-12
 
 # DESIGN 0005: Timestamped and sortable search hits
 
-**Status:** Draft
+**Status:** Approved
 **Author:** Donald Gifford
 **Date:** 2026-09-12
 
@@ -509,14 +509,13 @@ taken as given (page stamps emitted; honest wording; UTC on both endpoints;
 `1.5.0`; sort ships in this PR with `sort` first in the ranking rules and
 unknown tokens rejected with `400`) and are not re-asked here.
 
-**Decisions (2026-09-12): 2a, 3a, 4a, 5a.** Question 1 is still open —
-the Detailed Design marks every `created`-on-hit line with `OQ-1` so the
-answer is a mechanical strip or keep. Terminology, since it caused
-confusion in review: a **hit** is one row of the `hits` array in the
-`searchDocs` response — one search result, the `SearchHit` schema. It is
-Meilisearch's word and the wire field's name; nothing to do with telemetry.
-"`updated_at` on hits" is exactly "every search result carries its
-last-updated time".
+**Decisions (2026-09-12): all five, option a.** The Detailed Design cites
+`OQ-1` at every `created`-on-hit line, marking the decision that put it
+there. Terminology, since it caused confusion in review: a **hit** is one
+row of the `hits` array in the `searchDocs` response — one search result,
+the `SearchHit` schema. It is Meilisearch's word and the wire field's name;
+nothing to do with telemetry. "`updated_at` on hits" is exactly "every
+search result carries its last-updated time".
 
 ### 1. Expose the created date on hits as well?
 
@@ -532,12 +531,14 @@ last-updated time".
   without a second request per row.
 - Other: \_\_\_\_\_
 
-**→ Pending.** The question is only whether the *second* date — the
-frontmatter `created` — also rides on each search result. `updated_at`
-ships regardless. The "trap" in **a** is narrow: a list sorted by
-`created:desc` whose rows show only `updated_at` gives the reader no
-visible reason for the order. If the directory will only ever sort by
-`updated_at`, **b** loses nothing.
+**→ Decision: 1a.** `created` rides on every hit beside `updated_at`. The
+question was only whether the *second* date — the frontmatter `created`,
+the author-typed date on the doc — also rides on each search result;
+`updated_at` was never in question. The "trap" in **a** is narrow: a list
+sorted by `created:desc` whose rows show only `updated_at` gives the
+reader no visible reason for the order. Kept deliberately simple; features
+under consideration for later may refactor this surface, and a second
+string field is the cheapest thing to carry until then.
 
 ### 2. Sort token shape on the wire?
 
