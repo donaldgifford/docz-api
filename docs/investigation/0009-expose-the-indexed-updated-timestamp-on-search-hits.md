@@ -210,6 +210,12 @@ is skipped, so its row and its stamp stay put. The semantics that fall out:
   the row, so the index follows.
 - Frontmatter edits count as content (the hash is over the raw bytes);
   metadata-only reconcile changes do not exist separately.
+- **Addendum (2026-09-12, found while designing the sort):** Postgres
+  `now()` is `transaction_timestamp()`, and `ReconcileRepo` is one
+  transaction, so every document and page a reconcile touches gets the
+  **identical** stamp — a first onboard makes a whole repo tie on
+  `updated_at`. DESIGN-0005 carries the consequence (an implicit secondary
+  sort key).
 
 This is exactly the value `Document.updated_at` has served since Phase 2
 (`internal/httpapi/dto.go:166,183`), so exposing it on hits introduces no new
