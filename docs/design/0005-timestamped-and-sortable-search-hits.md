@@ -509,6 +509,15 @@ taken as given (page stamps emitted; honest wording; UTC on both endpoints;
 `1.5.0`; sort ships in this PR with `sort` first in the ranking rules and
 unknown tokens rejected with `400`) and are not re-asked here.
 
+**Decisions (2026-09-12): 2a, 3a, 4a, 5a.** Question 1 is still open —
+the Detailed Design marks every `created`-on-hit line with `OQ-1` so the
+answer is a mechanical strip or keep. Terminology, since it caused
+confusion in review: a **hit** is one row of the `hits` array in the
+`searchDocs` response — one search result, the `SearchHit` schema. It is
+Meilisearch's word and the wire field's name; nothing to do with telemetry.
+"`updated_at` on hits" is exactly "every search result carries its
+last-updated time".
+
 ### 1. Expose the created date on hits as well?
 
 - **a (recommended): yes — add `created` beside `updated_at`.** It is one of
@@ -522,6 +531,13 @@ unknown tokens rejected with `400`) and are not re-asked here.
   `created` sort still works, the caller just cannot display its key
   without a second request per row.
 - Other: \_\_\_\_\_
+
+**→ Pending.** The question is only whether the *second* date — the
+frontmatter `created` — also rides on each search result. `updated_at`
+ships regardless. The "trap" in **a** is narrow: a list sorted by
+`created:desc` whose rows show only `updated_at` gives the reader no
+visible reason for the order. If the directory will only ever sort by
+`updated_at`, **b** loses nothing.
 
 ### 2. Sort token shape on the wire?
 
@@ -537,6 +553,8 @@ unknown tokens rejected with `400`) and are not re-asked here.
   the enum becomes `[-updated_at, updated_at, -created, created]`, which
   generated clients render less readably.
 - Other: \_\_\_\_\_
+
+**→ Decision: 2a.** One enumerated `<attribute>:<direction>` token.
 
 ### 3. Implicit secondary sort key for ties?
 
@@ -555,6 +573,9 @@ unknown tokens rejected with `400`) and are not re-asked here.
   it.
 - Other: \_\_\_\_\_
 
+**→ Decision: 3a.** Fixed server-side secondary key per the table in the
+Detailed Design.
+
 ### 4. Server-side default order when no sort is given?
 
 - **a (recommended): none — absent `sort` keeps today's relevance ranking;
@@ -572,6 +593,8 @@ unknown tokens rejected with `400`) and are not re-asked here.
   recency list unless the caller opts out; wrong for the palette.
 - Other: \_\_\_\_\_
 
+**→ Decision: 4a.** No server default; the site passes the sort.
+
 ### 5. Add a source filter parameter in the same bump?
 
 - **a (recommended): yes — `source` query parameter, enum `[doc, page]`.**
@@ -583,6 +606,8 @@ unknown tokens rejected with `400`) and are not re-asked here.
   #34's topic plus the sort; callers wanting documents only filter
   client-side and lose accurate `estimated_total_hits` and offsets.
 - Other: \_\_\_\_\_
+
+**→ Decision: 5a.** The `source` filter parameter ships in the same bump.
 
 ## Follow-ups
 
