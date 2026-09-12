@@ -108,7 +108,8 @@ touches shares one transaction timestamp, and the `source` filter the
   `CLAUDE.md` Phase 3 gotchas.
 - Marking DESIGN-0005 Implemented and noting the landing in INV-0009.
 - The `google.golang.org/grpc` CVE bump as Phase 1's prerequisite task
-  (OQ-1), so the PR's Security Scan is never the blocker.
+  (OQ-1), so the PR's Security Scan is never the blocker — landed early in
+  the docs PR #35 for the same reason.
 - Opening the docz-site follow-up issue once the PR merges (Phase 5's last
   task) — the site work itself stays out of scope.
 
@@ -141,13 +142,19 @@ judged on its own changes.
 
 #### Tasks
 
-- [ ] **Prerequisite (OQ-1):** bump `google.golang.org/grpc` to `v1.83.2`
+- [x] **Prerequisite (OQ-1):** bump `google.golang.org/grpc` to `v1.83.2`
       via `go get google.golang.org/grpc@v1.83.2` + `go mod edit -fmt`
       (never a bare `go mod tidy` — staged indirect deps get pruned); run
       the local Trivy scan the CI Security job mirrors
       (`trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 .`)
       and `go build ./...`; commit on its own
       (`chore(deps): bump google.golang.org/grpc to v1.83.2`).
+      **Landed early, in the docs PR #35 (2026-09-12):** the CI Security
+      Scan job has no path filter, so the docs-only PR tripped on the
+      same CVE (local Trivy: `Total: 1 (HIGH: 1)`, CVE-2026-84445). The
+      implementation branch inherits the bump from `main`; re-run the
+      local scan before Phase 1's first push to confirm nothing new
+      appeared.
 - [ ] `internal/search/search.go`: add `"created"` and `"updated_at"` to
       `AttributesToRetrieve`; add `Created string` and `UpdatedAt int64` to
       `rawHit`; copy both in `decodeHits`, the stamp through a new
@@ -497,7 +504,10 @@ The open Dependabot alert on `google.golang.org/grpc` (`>= 1.83.0,
 
 **Answered `1a`, positioned as Phase 1's prerequisite task** (same
 branch, own commit, first thing pushed) so the Security Scan never blocks
-the implementation PR.
+the implementation PR. **In practice it landed one PR earlier:** the docs
+PR (#35) hit the same scan, so the bump rode there as its own
+`chore(deps)` commit (the PR #18 precedent) and the prerequisite is
+already checked off above.
 
 ### 2. Validate the source filter value, or pass it through?
 
