@@ -280,6 +280,16 @@ paths:
           description: Filter by document author.
           schema:
             type: string
+        - name: sort
+          in: query
+          description: >
+            Order the matches. The requested key is a total order over the result set, with a fixed secondary key and then
+            relevance breaking ties; absent, results are ranked by relevance alone. `created` sorts as its `YYYY-MM-DD` string,
+            so page hits — which carry no authored date — sort first ascending and last descending. An unrecognized value
+            is a 400.
+          schema:
+            type: string
+            enum: ['updated_at:desc', 'updated_at:asc', 'created:desc', 'created:asc']
         - name: offset
           in: query
           description: Zero-based result offset.
@@ -303,6 +313,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SearchResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
   /api/v1/auth/session:
@@ -516,6 +528,15 @@ components:
         type: string
       example: guides%2Fsetup.md
   responses:
+    BadRequest:
+      description: |
+        A query parameter is malformed — currently only an unrecognized
+        `sort` token. Filter parameters are not validated: an unknown facet
+        value simply matches nothing.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     Unauthorized:
       description: Missing or invalid session.
       content:

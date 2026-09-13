@@ -63,6 +63,12 @@ func (c *Client) Search(ctx context.Context, p *SearchParams) (SearchResult, err
 	if f := buildFilter(p); f != "" {
 		req.Filter = f
 	}
+	// Leave Sort nil when unsorted, so an unsorted search is the same request
+	// Meilisearch received before sorting existed and the sort ranking rule
+	// stays inert.
+	if p.Sort != "" {
+		req.Sort = sortKeys(p.Sort)
+	}
 
 	resp, err := c.svc.Index(indexUID).SearchWithContext(ctx, p.Query, req)
 	if err != nil {
@@ -84,6 +90,19 @@ func (c *Client) Search(ctx context.Context, p *SearchParams) (SearchResult, err
 		Hits:           hits,
 		Facets:         facets,
 	}, nil
+}
+
+// sortKeys returns the Meilisearch sort expression for a validated token:
+// the requested key followed by its tie-breaking secondary. An unrecognized
+// token yields nil, which leaves the search unsorted rather than failing it —
+// unreachable through the handler, which rejects such a token with a 400
+// before Search is called.
+func sortKeys(token string) []string {
+	secondary, ok := sortSecondary[token]
+	if !ok {
+		return nil
+	}
+	return []string{token, secondary}
 }
 
 // rawHit is the decode target for one Meilisearch hit. _formatted carries the

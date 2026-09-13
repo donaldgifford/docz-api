@@ -16,6 +16,16 @@ import (
 func (h *Handler) searchDocs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
+	// Validate the sort before searching: an unrecognized token is a caller
+	// error worth reporting, not something to drop silently, because the
+	// caller cannot tell a dropped sort from a satisfied one by reading the
+	// results (DESIGN-0005).
+	sortToken, err := search.ParseSort(q.Get("sort"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid sort")
+		return
+	}
+
 	params := search.SearchParams{
 		Query:          q.Get("q"),
 		AllowedRepoIDs: authorize.FromContext(r.Context()),
@@ -23,6 +33,7 @@ func (h *Handler) searchDocs(w http.ResponseWriter, r *http.Request) {
 		Type:           q.Get("type"),
 		Status:         q.Get("status"),
 		Author:         q.Get("author"),
+		Sort:           sortToken,
 		Offset:         parseNonNegInt(q.Get("offset")),
 		Limit:          parseNonNegInt(q.Get("limit")),
 	}

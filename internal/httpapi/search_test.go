@@ -14,12 +14,14 @@ import (
 // fakeSearcher captures the SearchParams it receives and returns a canned result.
 type fakeSearcher struct {
 	got    search.SearchParams
+	calls  int
 	result search.SearchResult
 	err    error
 }
 
 func (f *fakeSearcher) Search(_ context.Context, p *search.SearchParams) (search.SearchResult, error) {
 	f.got = *p
+	f.calls++
 	return f.result, f.err
 }
 
@@ -80,6 +82,63 @@ func TestSearchEndpoint(t *testing.T) {
 	if body.Facets["type"]["frameworks"] != 1 {
 		t.Errorf("facets = %+v, want type.frameworks=1", body.Facets)
 	}
+}
+
+// TestSearchSortParameter covers the validated sort: an accepted token
+// reaches the search layer, an absent one leaves the search unsorted, and an
+// unrecognized one is rejected before any search runs.
+func TestSearchSortParameter(t *testing.T) {
+	t.Run("an accepted token reaches the searcher", func(t *testing.T) {
+		st := seededStore()
+		fs := &fakeSearcher{}
+		r := chi.NewRouter()
+		NewHandlerWithSearch(st, fs).Mount(r, authorize.Middleware(authorize.NewAllReposAuthorizer(st)))
+
+		rec := doGet(t, r, "/api/v1/search?q=x&sort=updated_at:desc")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if fs.got.Sort != search.SortUpdatedDesc {
+			t.Errorf("Sort = %q, want %q", fs.got.Sort, search.SortUpdatedDesc)
+		}
+	})
+
+	t.Run("an absent sort leaves the search unsorted", func(t *testing.T) {
+		st := seededStore()
+		fs := &fakeSearcher{}
+		r := chi.NewRouter()
+		NewHandlerWithSearch(st, fs).Mount(r, authorize.Middleware(authorize.NewAllReposAuthorizer(st)))
+
+		doGet(t, r, "/api/v1/search?q=x")
+		if fs.got.Sort != "" {
+			t.Errorf("Sort = %q, want empty so ranking stays relevance-only", fs.got.Sort)
+		}
+	})
+
+	t.Run("an unknown token is a 400 and never searches", func(t *testing.T) {
+		st := seededStore()
+		fs := &fakeSearcher{}
+		r := chi.NewRouter()
+		NewHandlerWithSearch(st, fs).Mount(r, authorize.Middleware(authorize.NewAllReposAuthorizer(st)))
+
+		rec := doGet(t, r, "/api/v1/search?q=x&sort=bogus")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d, want 400", rec.Code)
+		}
+		var body struct {
+			Error string `json:"error"`
+		}
+		mustDecode(t, rec, &body)
+		if body.Error != "invalid sort" {
+			t.Errorf("error = %q, want %q", body.Error, "invalid sort")
+		}
+		// Rejection happens before the search: a bad token must not cost a
+		// Meilisearch round trip, and must not return results in an order
+		// the caller did not ask for.
+		if fs.calls != 0 {
+			t.Errorf("searcher called %d times, want 0", fs.calls)
+		}
+	})
 }
 
 func TestSearchInjectsAuthorizedRepoScope(t *testing.T) {

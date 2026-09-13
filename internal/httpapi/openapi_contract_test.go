@@ -349,6 +349,15 @@ func TestOpenAPIContract(t *testing.T) {
 		{name: "listDocs", method: http.MethodGet, target: "http://localhost/api/v1/repos/acme/platform/types/frameworks/docs"},
 		{name: "getDoc", method: http.MethodGet, target: "http://localhost/api/v1/repos/acme/platform/types/FW/docs/FW-0001"},
 		{name: "searchDocs", method: http.MethodGet, target: "http://localhost/api/v1/search?q=intro"},
+		// A sorted search validates the sort enum on the request side. The
+		// rejected case is deliberately absent: an out-of-enum value fails
+		// kin-openapi's request validation before the handler runs, so it
+		// would prove the spec rather than the handler — the 400 envelope is
+		// covered by the httpapi unit test instead.
+		{
+			name: "searchDocsSorted", method: http.MethodGet,
+			target: "http://localhost/api/v1/search?q=intro&sort=updated_at:desc",
+		},
 		{name: "notFound", method: http.MethodGet, target: "http://localhost/api/v1/repos/acme/missing"},
 		{name: "getSession", method: http.MethodGet, target: "http://localhost/api/v1/auth/session"},
 		{name: "logout", method: http.MethodPost, target: "http://localhost/api/v1/auth/logout"},

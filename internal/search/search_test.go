@@ -2,6 +2,9 @@ package search
 
 import (
 	"encoding/json"
+	"errors"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/meilisearch/meilisearch-go"
@@ -103,6 +106,154 @@ func TestDecodeHitsMissingDates(t *testing.T) {
 	if got[0].Created != "" || got[0].UpdatedAt != "" {
 		t.Errorf("created/updated_at = %q/%q, want both empty",
 			got[0].Created, got[0].UpdatedAt)
+	}
+}
+
+func TestParseSort(t *testing.T) {
+	tests := []struct {
+		name    string
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{"empty is the unsorted default", "", "", false},
+		{"updated_at descending", SortUpdatedDesc, SortUpdatedDesc, false},
+		{"updated_at ascending", SortUpdatedAsc, SortUpdatedAsc, false},
+		{"created descending", SortCreatedDesc, SortCreatedDesc, false},
+		{"created ascending", SortCreatedAsc, SortCreatedAsc, false},
+		// Direction is part of the token: a bare attribute would need a
+		// documented default direction, which the enum exists to avoid.
+		{"bare attribute", "updated_at", "", true},
+		{"unknown direction", "updated_at:down", "", true},
+		{"wrong case", "UPDATED_AT:desc", "", true},
+		// Not a sortable attribute — sorting by it would fail in Meilisearch.
+		{"unsortable attribute", "body:desc", "", true},
+		{"filterable but unsortable attribute", "status:desc", "", true},
+		// Whitespace is not trimmed: the enum is the contract, and quietly
+		// accepting near-misses invites more leniency questions.
+		{"leading whitespace", " updated_at:desc", "", true},
+		{"trailing whitespace", "updated_at:desc ", "", true},
+		{"a comma list is one token, not two", "updated_at:desc,created:desc", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseSort(tt.in)
+			if tt.wantErr {
+				if !errors.Is(err, ErrInvalidSort) {
+					t.Fatalf("ParseSort(%q) error = %v, want ErrInvalidSort", tt.in, err)
+				}
+				// The rejected value belongs in the message, for the caller
+				// reading a log line rather than the response body.
+				if !strings.Contains(err.Error(), tt.in) {
+					t.Errorf("ParseSort(%q) error = %q, want it to quote the input", tt.in, err)
+				}
+			} else if err != nil {
+				t.Fatalf("ParseSort(%q) unexpected error: %v", tt.in, err)
+			}
+			if got != tt.want {
+				t.Errorf("ParseSort(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestSortKeys pins the secondary key. Every record a reconcile touches
+// shares one transaction timestamp, so an updated_at sort ties across a whole
+// repository; the secondary resolves those ties by the other date in the same
+// direction rather than by Meilisearch's internal order.
+func TestSortKeys(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		want  []string
+	}{
+		{
+			name:  "newest updated falls through to newest created",
+			token: SortUpdatedDesc,
+			want:  []string{SortUpdatedDesc, SortCreatedDesc},
+		},
+		{
+			name:  "oldest updated falls through to oldest created",
+			token: SortUpdatedAsc,
+			want:  []string{SortUpdatedAsc, SortCreatedAsc},
+		},
+		{
+			name:  "newest created falls through to newest updated",
+			token: SortCreatedDesc,
+			want:  []string{SortCreatedDesc, SortUpdatedDesc},
+		},
+		{
+			name:  "oldest created falls through to oldest updated",
+			token: SortCreatedAsc,
+			want:  []string{SortCreatedAsc, SortUpdatedAsc},
+		},
+		// Unreachable through the handler, which rejects the token first.
+		{name: "unvalidated token yields no sort", token: "nonsense", want: nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sortKeys(tt.token)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("sortKeys(%q) = %v, want %v", tt.token, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestSortTokensCoverSortableAttributes ties the three lists together: every
+// accepted token names an attribute the index can actually sort by, and every
+// sortable attribute is reachable in both directions. Adding a sortable
+// attribute without its tokens (or the reverse) fails here rather than as a
+// Meilisearch error on a live query.
+func TestSortTokensCoverSortableAttributes(t *testing.T) {
+	seen := make(map[string][]string, len(sortableAttributes))
+	for token, secondary := range sortSecondary {
+		attr, dir, ok := strings.Cut(token, ":")
+		if !ok {
+			t.Errorf("sort token %q is not <attribute>:<direction>", token)
+			continue
+		}
+		if !slices.Contains(sortableAttributes, attr) {
+			t.Errorf("sort token %q names %q, which is not a sortable attribute %v",
+				token, attr, sortableAttributes)
+		}
+		if _, ok := sortSecondary[secondary]; !ok {
+			t.Errorf("sort token %q has secondary %q, which is not itself an accepted token",
+				token, secondary)
+		}
+		// The secondary must order the same way, or "newest first" would
+		// break ties with the oldest.
+		if _, secDir, _ := strings.Cut(secondary, ":"); secDir != dir {
+			t.Errorf("sort token %q has secondary %q in direction %q, want %q",
+				token, secondary, secDir, dir)
+		}
+		seen[attr] = append(seen[attr], dir)
+	}
+
+	for _, attr := range sortableAttributes {
+		dirs := seen[attr]
+		slices.Sort(dirs)
+		if !slices.Equal(dirs, []string{"asc", "desc"}) {
+			t.Errorf("sortable attribute %q has tokens for %v, want both asc and desc", attr, dirs)
+		}
+	}
+}
+
+// TestRankingRulesSortLeads guards the ranking-rule placement. At
+// Meilisearch's default position the sort rule only breaks ties within
+// relevance, so a "newest first" search would not return the newest hit
+// first. The rule is inert on searches that pass no sort, which is what makes
+// leading with it safe (DESIGN-0005).
+func TestRankingRulesSortLeads(t *testing.T) {
+	if len(rankingRules) == 0 || rankingRules[0] != "sort" {
+		t.Fatalf("ranking rules = %v, want \"sort\" first", rankingRules)
+	}
+	// The relevance rules must all still be present behind it: dropping one
+	// would silently change unsorted ranking, which this change must not do.
+	for _, rule := range []string{"words", "typo", "proximity", "attribute", "exactness"} {
+		if !slices.Contains(rankingRules, rule) {
+			t.Errorf("ranking rules = %v, want them to retain %q", rankingRules, rule)
+		}
 	}
 }
 
