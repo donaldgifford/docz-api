@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0005
 title: "Timestamped and sortable search hits"
-status: Approved
+status: Implemented
 author: Donald Gifford
 created: 2026-09-12
 ---
@@ -9,9 +9,13 @@ created: 2026-09-12
 
 # DESIGN 0005: Timestamped and sortable search hits
 
-**Status:** Approved
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-09-12
+**Landed:** 2026-09-13 — implemented by IMPL-0010 in one PR (spec
+`1.5.0`). One prediction was corrected against a real Meilisearch: an
+empty sort value places a record last in **both** directions, not first
+ascending. See the correction block under "The sort parameter".
 
 <!--toc:start-->
 - [Overview](#overview)

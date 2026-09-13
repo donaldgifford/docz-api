@@ -444,24 +444,24 @@ the docz-side status flips.
 
 #### Tasks
 
-- [ ] `api/README.md`: current-version paragraph → `1.5.0` (dated hits,
+- [x] `api/README.md`: current-version paragraph → `1.5.0` (dated hits,
       `sort`, `source`, first `400`), inserting the skipped `1.4.2` entry
       (the `groups` description, PR #32); clarify the **major** rule's
       "newly required field" as request-side, citing the `1.4.0` precedent
       for response properties.
-- [ ] `CLAUDE.md` Phase 3 search bullets: a GOTCHA for the explicit
+- [x] `CLAUDE.md` Phase 3 search bullets: a GOTCHA for the explicit
       `AttributesToRetrieve` list (a new attribute must be added there or
       it never reaches the decoder), one for the `sort` ranking-rule
       placement (inert without the parameter; first = total order), and a
       line on the shared-transaction `updated_at` and the implicit
       secondary key.
-- [ ] Live smoke (OQ-4a): `docker compose up -d`, `just run`, `-onboard`
+- [x] Live smoke (OQ-4a): `docker compose up -d`, `just run`, `-onboard`
       this repo (it dogfoods the `api:` block, so both record kinds exist),
       then `curl` the four sorts, `source=doc`, `source=page`, a bogus
       sort (`400`), and Meilisearch's
       `GET /indexes/documents/settings/ranking-rules`; record the evidence
       in this phase's status block.
-- [ ] DESIGN-0005: status `Implemented` + a dated landing note; INV-0009:
+- [x] DESIGN-0005: status `Implemented` + a dated landing note; INV-0009:
       a one-line "landed in IMPL-0010" under the Recommendation.
 - [ ] `docz update` (then revert its underscore-anchor mangling in older
       docs), `just ci` green, `mise exec -- git-cliff -o CHANGELOG.md` +
@@ -504,6 +504,64 @@ the docz-side status flips.
   the one item that cannot close before the merge; mark it `deferred —
   human required` only if the merge itself is pending).
 
+**Status: COMPLETE ✅** (2026-09-13), with the post-merge docz-site issue
+`deferred — human required` (it cannot be opened before the PR merges and
+the release tags).
+
+**Live smoke (OQ-4a).** The compose stack (Postgres + Redis + Meili, all
+`Healthy`), the built binary on `:8099` with `AUTH_PROVIDERS=none`, and
+this repository onboarded through the real GitHub App
+(`donaldgifford/docz-api@145915803`, App `donaldgifford-docz-api`
+authenticated at boot). `/readyz` reported
+`{"meilisearch":"ok","postgres":"ok","redis":"ok"}` and `/openapi.yaml`
+served `version: 1.5.0`. The repo dogfoods the `api:` block, so the
+corpus held both record kinds: 24 documents and 2 pages.
+
+What the live stack showed:
+
+- **The index settings migrated on a long-lived index.** This
+  Meilisearch volume predates the change, and after one startup
+  `GET /indexes/documents/settings/ranking-rules` returned
+  `["sort","words","typo","proximity","attribute","exactness"]` with
+  `sortable-attributes` `["created","updated_at"]`. That is the deploy
+  path, on a populated index, not a fresh one.
+- **Sort beats relevance.** For `q=publish` the unsorted top hit is
+  `operations/ecr-publish-setup.md`; with `sort=created:asc` the top hit
+  is `DESIGN-0001` and that page falls to last. A total order, exactly as
+  the ranking-rule position promises.
+- **An undated record sorts last in both directions.** In the 15-hit
+  `q=publish` set the one page (`created: ""`) was at index 14 under
+  `created:desc` *and* under `created:asc` — the corrected behavior, not
+  the lexicographic reading DESIGN-0005 first predicted.
+- **The shared-transaction stamp is real and the secondary key carries
+  the order.** All 24 documents came back with
+  `updated_at = 2026-09-13T17:58:34Z`, identical to the second, because
+  one reconcile is one transaction. `sort=updated_at:desc` was therefore
+  ordered entirely by the implicit `created` secondary key
+  (`DESIGN-0005`, `INV-0009`, `IMPL-0010`, `IMPL-0009`, …); without that
+  key the order would have been arbitrary.
+- **The filters and the error behave.** `source=doc` → 14 hits, all
+  `doc`; `source=page` → 1 hit, `operations/ecr-publish-setup.md`;
+  `source=doc&sort=created:desc` composes; `sort=bogus` →
+  `HTTP 400 {"error":"invalid sort"}`.
+- **One field, two endpoints.** For `DESIGN-0005` the search hit and
+  `GET …/types/design/docs/DESIGN-0005` both returned
+  `created 2026-09-12` and `updated_at 2026-09-13T17:58:34Z`.
+
+**A rollout observation worth keeping.** The first onboard hit a
+pre-existing index whose records were last written before IMPL-0007, and
+every one of those stale hits still carried a populated `updated_at` —
+the timestamps were in the index all along, and only the retrieve list
+was missing, which is precisely INV-0009's F1. Those same records carried
+an empty `source`, so they were invisible to a `source` filter and
+absent from the facet counts (26 records, facets summing to 14) until a
+content change re-indexed them. Nothing here regresses with this change,
+but it is the concrete shape of "natural refresh only" for any field
+added to `IndexDoc`: existing rows keep their old attribute set until the
+content hash moves. The smoke corpus was then cleared and re-ingested
+(24 upserted, 0 unchanged) so the assertions above ran against records
+written by this build.
+
 ---
 
 ## File Changes
@@ -531,20 +589,20 @@ the docz-side status flips.
 
 ## Testing Plan
 
-- [ ] Unit (`just test`): `formatUnix`, `decodeHits`, `nullTimestamp` UTC,
+- [x] Unit (`just test`): `formatUnix`, `decodeHits`, `nullTimestamp` UTC,
       `ParseSort`, `sortKeys`, the sortable-attribute guard, `buildFilter`
       `source`, httpapi sort/source/400.
-- [ ] Contract (`just test`, no tag): fixture carries real dates;
+- [x] Contract (`just test`, no tag): fixture carries real dates;
       `searchDocsSorted` + `searchDocsSource` validate the enums and the
       `200`s; `doc.Validate` covers `BadRequest`.
-- [ ] Integration (`just test-integration`): retrieve list, exact sort
+- [x] Integration (`just test-integration`): retrieve list, exact sort
       orders, total order under a query, `created` string-sort edges,
       `source` filter, ranking rules read back after a re-`EnsureIndex`.
-- [ ] e2e (`just test-integration`): RFC3339 `Z` + byte-equality with
+- [x] e2e (`just test-integration`): RFC3339 `Z` + byte-equality with
       `Document.updated_at`, `created` passthrough and sort, `400` through
       the real router.
-- [ ] Spec (`just lint-openapi`): vacuum 100/100, yamlfmt canonical.
-- [ ] Live smoke (OQ-4a): compose stack + `just run`, this repo onboarded,
+- [x] Spec (`just lint-openapi`): vacuum 100/100, yamlfmt canonical.
+- [x] Live smoke (OQ-4a): compose stack + `just run`, this repo onboarded,
       `curl` the four sorts, `source=doc`, a bogus sort, and the
       Meilisearch `GET /indexes/documents/settings/ranking-rules`.
 
