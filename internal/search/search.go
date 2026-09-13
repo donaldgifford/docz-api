@@ -28,6 +28,16 @@ const (
 // facetNames are the attributes faceted (and returned as counts) on every search.
 var facetNames = []string{"repo", "type", "status", "author", "source"}
 
+// retrieveAttributes are the index attributes Meilisearch returns on a hit.
+// It is the first place a hit field can be dropped: an attribute missing here
+// decodes as a zero value however rawHit and decodeHits are written, and no
+// test that fakes the searcher can see the difference (INV-0009 F2). A new
+// SearchHit field needs all three — this list, rawHit, and decodeHits.
+var retrieveAttributes = []string{
+	"source", "repo", "doc_id", "type", "title", "path",
+	"status", "author", "created", "updated_at", "body",
+}
+
 // Search runs a full-text query with facet filters and returns hits, facet
 // counts, and highlighted snippets. The authorize seam's AllowedRepoIDs is
 // injected as a repo_id filter; Repo/Type/Status/Author narrow the results
@@ -39,17 +49,10 @@ func (c *Client) Search(ctx context.Context, p *SearchParams) (SearchResult, err
 	}
 
 	req := &meilisearch.SearchRequest{
-		Offset: p.Offset,
-		Limit:  limit,
-		Facets: facetNames,
-		// The retrieve list is the first place a hit field can be dropped:
-		// Meilisearch returns only these attributes, so one missing here
-		// decodes as a zero value however rawHit and decodeHits are written
-		// (INV-0009 F2). Add a new hit field in all three places.
-		AttributesToRetrieve: []string{
-			"source", "repo", "doc_id", "type", "title", "path",
-			"status", "author", "created", "updated_at", "body",
-		},
+		Offset:                p.Offset,
+		Limit:                 limit,
+		Facets:                facetNames,
+		AttributesToRetrieve:  retrieveAttributes,
 		AttributesToCrop:      []string{"body"},
 		CropLength:            snippetCropLength,
 		AttributesToHighlight: []string{"body"},

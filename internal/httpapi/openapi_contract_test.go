@@ -62,6 +62,10 @@ func (contractSearcher) Search(context.Context, *search.SearchParams) (search.Se
 			Source: search.SourceDoc, Repo: "acme/platform", DocID: "FW-0001",
 			Type: "frameworks", Title: "Intro", Path: "docs/frameworks/0001-intro.md",
 			Status: "Draft", Author: "Jane",
+			// Real dates, not zero values: the schema types both as strings,
+			// so "" would satisfy it without ever exercising the spellings
+			// consumers generate against.
+			Created: "2026-01-15", UpdatedAt: "2025-06-22T18:04:11Z",
 			Snippet: "an <em>intro</em> to frameworks",
 		}},
 		Facets: map[string]search.FacetMap{
