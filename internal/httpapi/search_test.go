@@ -141,6 +141,38 @@ func TestSearchSortParameter(t *testing.T) {
 	})
 }
 
+// TestSearchSourceFilter covers the record-kind filter. Unlike sort it is not
+// validated: an unknown value reaches the search layer and matches nothing,
+// matching how the repo/type/status/author filters already behave.
+func TestSearchSourceFilter(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  string
+	}{
+		{"pages only", "source=page", search.SourcePage},
+		{"documents only", "source=doc", search.SourceDoc},
+		{"an unknown value is passed through, not rejected", "source=nonsense", "nonsense"},
+		{"absent leaves both kinds", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := seededStore()
+			fs := &fakeSearcher{}
+			r := chi.NewRouter()
+			NewHandlerWithSearch(st, fs).Mount(r, authorize.Middleware(authorize.NewAllReposAuthorizer(st)))
+
+			rec := doGet(t, r, "/api/v1/search?q=x&"+tt.query)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			if fs.got.Source != tt.want {
+				t.Errorf("Source = %q, want %q", fs.got.Source, tt.want)
+			}
+		})
+	}
+}
+
 func TestSearchInjectsAuthorizedRepoScope(t *testing.T) {
 	st := seededStore()
 	fs := &fakeSearcher{}

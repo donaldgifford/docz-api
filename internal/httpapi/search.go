@@ -33,9 +33,14 @@ func (h *Handler) searchDocs(w http.ResponseWriter, r *http.Request) {
 		Type:           q.Get("type"),
 		Status:         q.Get("status"),
 		Author:         q.Get("author"),
-		Sort:           sortToken,
-		Offset:         parseNonNegInt(q.Get("offset")),
-		Limit:          parseNonNegInt(q.Get("limit")),
+		// The facet filters are passed through unvalidated: an unknown value
+		// matches nothing, which is self-evident in the response. Only sort
+		// is rejected, because a dropped sort is invisible in the results
+		// while a dropped filter is not (DESIGN-0005 OQ-2a).
+		Source: q.Get("source"),
+		Sort:   sortToken,
+		Offset: parseNonNegInt(q.Get("offset")),
+		Limit:  parseNonNegInt(q.Get("limit")),
 	}
 
 	result, err := h.searcher.Search(r.Context(), &params)

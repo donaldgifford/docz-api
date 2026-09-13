@@ -203,6 +203,7 @@ func buildFilter(p *SearchParams) string {
 	parts = appendEq(parts, "type", p.Type)
 	parts = appendEq(parts, "status", p.Status)
 	parts = appendEq(parts, "author", p.Author)
+	parts = appendEq(parts, "source", p.Source)
 
 	return strings.Join(parts, " AND ")
 }

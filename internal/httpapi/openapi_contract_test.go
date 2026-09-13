@@ -358,6 +358,10 @@ func TestOpenAPIContract(t *testing.T) {
 			name: "searchDocsSorted", method: http.MethodGet,
 			target: "http://localhost/api/v1/search?q=intro&sort=updated_at:desc",
 		},
+		{
+			name: "searchDocsSource", method: http.MethodGet,
+			target: "http://localhost/api/v1/search?q=intro&source=doc",
+		},
 		{name: "notFound", method: http.MethodGet, target: "http://localhost/api/v1/repos/acme/missing"},
 		{name: "getSession", method: http.MethodGet, target: "http://localhost/api/v1/auth/session"},
 		{name: "logout", method: http.MethodPost, target: "http://localhost/api/v1/auth/logout"},

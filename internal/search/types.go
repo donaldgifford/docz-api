@@ -105,6 +105,10 @@ type SearchParams struct {
 	Type           string
 	Status         string
 	Author         string
+	// Source narrows to one record kind, SourceDoc or SourcePage; "" returns
+	// both. Like the other facet filters it is not validated — an unknown
+	// value simply matches nothing.
+	Source string
 	// Sort is a ParseSort-validated token, or "" to rank by relevance.
 	// Search does not re-validate it: an unrecognized value would reach
 	// Meilisearch as an invalid sort expression and fail the whole query.

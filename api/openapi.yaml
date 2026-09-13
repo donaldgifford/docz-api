@@ -280,6 +280,13 @@ paths:
           description: Filter by document author.
           schema:
             type: string
+        - name: source
+          in: query
+          description: >
+            Filter by record kind: `doc` for docz documents, `page` for api-block pages. Absent, both are returned.
+          schema:
+            type: string
+            enum: [doc, page]
         - name: sort
           in: query
           description: >
