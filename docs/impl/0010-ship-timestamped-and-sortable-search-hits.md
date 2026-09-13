@@ -294,7 +294,12 @@ case), `just lint` 0 issues, `just lint-openapi` 100/100.
 - **The unsorted request is provably unchanged.** `Search` sets
   `req.Sort` only when a token is present, and meilisearch-go tags
   `Sort` `omitempty`, so an unsorted search marshals without a `sort`
-  key at all — not merely an empty one.
+  key at all — not merely an empty one. *(Closed directly in Phase 5:
+  the request build moved into a pure `buildSearchRequest`, and
+  `TestBuildSearchRequestOmitsOptionalKeys` asserts both `Sort` and
+  `Filter` are nil on a plain query. It was drilled — dropping the
+  filter guard fails it. Until then the claim rested on reading the
+  guard and the struct tag.)*
 - **`sortSecondary` does double duty**: its keys are the accepted-token
   allowlist `ParseSort` checks, and its values are the tie-break keys
   `sortKeys` appends. One table, so the two cannot drift, and

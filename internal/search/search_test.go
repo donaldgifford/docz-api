@@ -257,6 +257,51 @@ func TestRankingRulesSortLeads(t *testing.T) {
 	}
 }
 
+// TestBuildSearchRequestOmitsOptionalKeys pins the promise that adding sort
+// and source left every existing caller's request untouched. Meilisearch
+// rejects an empty filter string outright, and a non-nil Sort would wake the
+// sort ranking rule that now leads the list — so both keys must be absent,
+// not merely empty, when the caller asks for neither.
+func TestBuildSearchRequestOmitsOptionalKeys(t *testing.T) {
+	req := buildSearchRequest(&SearchParams{Query: "logging"})
+
+	if req.Sort != nil {
+		t.Errorf("Sort = %v, want nil on an unsorted search", req.Sort)
+	}
+	if req.Filter != nil {
+		t.Errorf("Filter = %v, want nil when no filter applies", req.Filter)
+	}
+	if req.Limit != defaultSearchLimit {
+		t.Errorf("Limit = %d, want the default %d", req.Limit, defaultSearchLimit)
+	}
+}
+
+// TestBuildSearchRequestSetsOptionalKeys is the other half: a caller that asks
+// for a sort gets both keys, the requested one first.
+func TestBuildSearchRequestSetsOptionalKeys(t *testing.T) {
+	req := buildSearchRequest(&SearchParams{
+		Query:          "logging",
+		Sort:           SortUpdatedDesc,
+		Source:         "doc",
+		AllowedRepoIDs: []int64{7},
+		Limit:          5,
+	})
+
+	if want := []string{SortUpdatedDesc, SortCreatedDesc}; !slices.Equal(req.Sort, want) {
+		t.Errorf("Sort = %v, want %v", req.Sort, want)
+	}
+	filter, ok := req.Filter.(string)
+	if !ok {
+		t.Fatalf("Filter = %#v, want a string", req.Filter)
+	}
+	if !strings.Contains(filter, `source = "doc"`) {
+		t.Errorf("Filter = %q, want it to carry the source clause", filter)
+	}
+	if req.Limit != 5 {
+		t.Errorf("Limit = %d, want the caller's 5", req.Limit)
+	}
+}
+
 // TestSearchRetrievesDatedAttributes guards the retrieve list itself. A hit
 // field can only arrive if Search asks Meilisearch for its attribute, and
 // that list is invisible to every test that fakes the searcher — the drop

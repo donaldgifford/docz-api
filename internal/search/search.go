@@ -43,6 +43,34 @@ var retrieveAttributes = []string{
 // injected as a repo_id filter; Repo/Type/Status/Author narrow the results
 // further. An empty Query matches everything (subject to the filters).
 func (c *Client) Search(ctx context.Context, p *SearchParams) (SearchResult, error) {
+	resp, err := c.svc.Index(indexUID).SearchWithContext(ctx, p.Query, buildSearchRequest(p))
+	if err != nil {
+		return SearchResult{}, fmt.Errorf("meilisearch search: %w", err)
+	}
+
+	hits, err := decodeHits(resp.Hits)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	facets, err := parseFacets(resp.FacetDistribution)
+	if err != nil {
+		return SearchResult{}, err
+	}
+
+	return SearchResult{
+		Query:          p.Query,
+		EstimatedTotal: resp.EstimatedTotalHits,
+		Hits:           hits,
+		Facets:         facets,
+	}, nil
+}
+
+// buildSearchRequest assembles the Meilisearch request for one search. It is
+// separated from Search so the request can be asserted without a server: the
+// Filter and Sort keys are both conditional, and the promise that an unsorted
+// or unfiltered search sends the same request it always has is only checkable
+// on the assembled value.
+func buildSearchRequest(p *SearchParams) *meilisearch.SearchRequest {
 	limit := p.Limit
 	if limit <= 0 {
 		limit = defaultSearchLimit
@@ -69,27 +97,7 @@ func (c *Client) Search(ctx context.Context, p *SearchParams) (SearchResult, err
 	if p.Sort != "" {
 		req.Sort = sortKeys(p.Sort)
 	}
-
-	resp, err := c.svc.Index(indexUID).SearchWithContext(ctx, p.Query, req)
-	if err != nil {
-		return SearchResult{}, fmt.Errorf("meilisearch search: %w", err)
-	}
-
-	hits, err := decodeHits(resp.Hits)
-	if err != nil {
-		return SearchResult{}, err
-	}
-	facets, err := parseFacets(resp.FacetDistribution)
-	if err != nil {
-		return SearchResult{}, err
-	}
-
-	return SearchResult{
-		Query:          p.Query,
-		EstimatedTotal: resp.EstimatedTotalHits,
-		Hits:           hits,
-		Facets:         facets,
-	}, nil
+	return req
 }
 
 // sortKeys returns the Meilisearch sort expression for a validated token:
