@@ -1,7 +1,7 @@
 ---
 id: IMPL-0010
 title: "Ship timestamped and sortable search hits"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-09-12
 ---
@@ -9,9 +9,13 @@ created: 2026-09-12
 
 # IMPL 0010: Ship timestamped and sortable search hits
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-09-12
+**Progress:** All five phases complete and shipped as PR #37 (2026-09-13).
+One task remains and cannot run earlier: the docz-site follow-up issue,
+which needs the merge and the release tag. Flip to `Completed` when it is
+open.
 
 <!--toc:start-->
 - [Objective](#objective)
@@ -463,11 +467,13 @@ the docz-side status flips.
       in this phase's status block.
 - [x] DESIGN-0005: status `Implemented` + a dated landing note; INV-0009:
       a one-line "landed in IMPL-0010" under the Recommendation.
-- [ ] `docz update` (then revert its underscore-anchor mangling in older
+- [x] `docz update` (then revert its underscore-anchor mangling in older
       docs), `just ci` green, `mise exec -- git-cliff -o CHANGELOG.md` +
       `chore(changelog): Auto-sync` as the last commit; open the PR with
       the `minor` label (OQ-3a), body ending with the Claude Code footer.
-- [ ] **After the PR merges and the release tags** — open a GitHub issue
+      → **PR #37**, all 14 checks green.
+- [ ] **`deferred — human required`: after the PR merges and the release
+      tags** — open a GitHub issue
       in `donaldgifford/docz-site` describing what docz-api changed and
       what the site must do to use it. Title
       `docz-api v0.10.0 / spec 1.5.0: dated, sortable, source-filterable
@@ -507,6 +513,14 @@ the docz-side status flips.
 **Status: COMPLETE ✅** (2026-09-13), with the post-merge docz-site issue
 `deferred — human required` (it cannot be opened before the PR merges and
 the release tags).
+
+Shipped as **PR #37**, rebased once onto `main` (the docs PR's own
+changelog sync had landed, so `CHANGELOG.md` conflicted; the file was
+taken from `main` and regenerated). All 14 CI checks pass — Lint
+including `lint-openapi`, Test Go, Security Scan, CodeQL, Build with the
+SBOM scan, Docker Build, License Check, Changelog Drift, and the required
+`minor` semver label. The four skipped jobs are path-gated on the chart
+and alert files, which this PR does not touch.
 
 **Live smoke (OQ-4a).** The compose stack (Postgres + Redis + Meili, all
 `Healthy`), the built binary on `:8099` with `AUTH_PROVIDERS=none`, and
