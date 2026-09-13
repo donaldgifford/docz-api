@@ -235,29 +235,29 @@ ranking-rule move, and the first documented `400` on the read surface.
 
 #### Tasks
 
-- [ ] `internal/search/client.go`: hoist the sortable list to
+- [x] `internal/search/client.go`: hoist the sortable list to
       `var sortableAttributes = []string{"created", "updated_at"}` and use
       it in `EnsureIndex`; reorder `RankingRules` to
       `sort, words, typo, proximity, attribute, exactness` with a comment
       stating why (inert without `sort`; a requested sort is a total
       order; DESIGN-0005).
-- [ ] `internal/search/types.go`: the four `Sort*` token constants,
+- [x] `internal/search/types.go`: the four `Sort*` token constants,
       `ErrInvalidSort`, `ParseSort(s string) (string, error)` (`""` → `""`;
       accepted token → itself; else `ErrInvalidSort`); `SearchParams` gains
       `Sort string` documented as "a `ParseSort`-validated token or `""`".
-- [ ] `internal/search/search.go`: `sortKeys(token) []string` returning
+- [x] `internal/search/search.go`: `sortKeys(token) []string` returning
       the requested key plus its fixed secondary (the DESIGN-0005 table);
       `Search` sets `req.Sort = sortKeys(p.Sort)` when `p.Sort != ""`.
-- [ ] `internal/httpapi/search.go`: parse `sort` via `search.ParseSort`
+- [x] `internal/httpapi/search.go`: parse `sort` via `search.ParseSort`
       before the search; on `ErrInvalidSort` →
       `writeError(w, http.StatusBadRequest, "invalid sort")` and return
       without calling the searcher; otherwise set `params.Sort`.
-- [ ] `api/openapi.yaml`: `sort` query parameter on `searchDocs` with the
+- [x] `api/openapi.yaml`: `sort` query parameter on `searchDocs` with the
       four-value `enum` and the DESIGN-0005 description (total order,
       relevance breaks ties, `created` string-sort note);
       `components.responses.BadRequest` (`Error` envelope); `"400"` on
       `searchDocs` referencing it.
-- [ ] Unit tests: `ParseSort` table (`""`, each token, `updated_at`,
+- [x] Unit tests: `ParseSort` table (`""`, each token, `updated_at`,
       `UPDATED_AT:desc`, `updated_at:down`, `body:desc`, a token with
       surrounding whitespace); `sortKeys` table (each token → its pair); a
       guard that every token's attribute is in `sortableAttributes` and
@@ -265,12 +265,12 @@ ranking-rule move, and the first documented `400` on the read surface.
       `sort=updated_at:desc` reaches the fake searcher as `Sort`,
       `sort=bogus` → `400 {"error":"invalid sort"}` with the searcher never
       called, absent `sort` → `Sort == ""`.
-- [ ] Contract test: add `searchDocsSorted` to `TestOpenAPIContract`
+- [x] Contract test: add `searchDocsSorted` to `TestOpenAPIContract`
       (`/api/v1/search?q=intro&sort=updated_at:desc`) — request validation
       proves the enum, response validation the `200`. No `400` case: an
       out-of-enum value fails kin-openapi's request validation before the
       handler runs (DESIGN-0005 Testing Strategy).
-- [ ] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
+- [x] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
       commit (`feat(search): sort parameter with a total-order ranking`).
 
 #### Success Criteria
@@ -282,6 +282,27 @@ ranking-rule move, and the first documented `400` on the read surface.
   today's (no `sort` key in the Meilisearch request body).
 - `just lint-openapi` 100/100 with the new parameter and response
   component.
+
+**Status: COMPLETE ✅** (2026-09-13) — one commit. All criteria met:
+`go test ./...` green (including the new `searchDocsSorted` contract
+case), `just lint` 0 issues, `just lint-openapi` 100/100.
+
+- **The unsorted request is provably unchanged.** `Search` sets
+  `req.Sort` only when a token is present, and meilisearch-go tags
+  `Sort` `omitempty`, so an unsorted search marshals without a `sort`
+  key at all — not merely an empty one.
+- **`sortSecondary` does double duty**: its keys are the accepted-token
+  allowlist `ParseSort` checks, and its values are the tie-break keys
+  `sortKeys` appends. One table, so the two cannot drift, and
+  `TestSortTokensCoverSortableAttributes` ties both to
+  `sortableAttributes` (every token names a sortable attribute, every
+  attribute has both directions, every secondary runs the same way).
+- **`rankingRules` is a package var with a guard test** rather than an
+  inline literal, because the placement is the whole point of the change
+  and a future edit that restores Meilisearch's default order would
+  otherwise fail only in the integration suite.
+- Whitespace around a token is rejected, not trimmed — the enum is the
+  contract, and near-miss leniency invites more of the same.
 
 ---
 
