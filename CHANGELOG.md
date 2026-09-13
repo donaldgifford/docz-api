@@ -21,6 +21,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 - *(api)* Record spec 1.5.0 and the search gotchas
 - Record the live smoke and flip DESIGN-0005 to Implemented
 - *(design)* Refresh the DESIGN index for 0005
+- *(impl)* IMPL-0010 Phase 5 complete, shipped as PR #37
 
 ### Testing
 
