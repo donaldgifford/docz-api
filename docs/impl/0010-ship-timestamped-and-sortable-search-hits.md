@@ -357,36 +357,42 @@ This phase proves each claim at the seam that can see it.
 
 #### Tasks
 
-- [ ] `internal/search/search_integration_test.go` (real Meilisearch):
-  - [ ] a hit's `UpdatedAt` is a non-empty RFC3339 string ending in `Z`,
+- [x] `internal/search/search_integration_test.go` (real Meilisearch):
+  - [x] a hit's `UpdatedAt` is a non-empty RFC3339 string ending in `Z`,
         and `Created` is the seeded `YYYY-MM-DD` on doc hits / `""` on
         page hits (proves the retrieve list);
-  - [ ] empty query + `Sort: SortUpdatedDesc` over both repos → the exact
+  - [x] empty query + `Sort: SortUpdatedDesc` over both repos → the exact
         reverse of the seed order (all six records);
-  - [ ] `Query: "logging"` + `SortUpdatedDesc` → `2_p_99…`, `2_ADR-0001`,
+  - [x] `Query: "logging"` + `SortUpdatedDesc` → `2_p_99…`, `2_ADR-0001`,
         `1_RFC-0001` — a total order in which the most relevant hit is
         last (proves `sort` leads the ranking rules);
-  - [ ] `Sort: SortCreatedDesc` → the three page records last;
-        `SortCreatedAsc` → first (the `""` behavior the spec promises);
-  - [ ] `Source: SourceDoc` yields three hits and no page; `SourcePage`
+  - [x] `Sort: SortCreatedDesc` / `SortCreatedAsc` → the three page
+        records last in **both** directions (the observed `""` behavior;
+        see the status block — the spec and DESIGN-0005 were corrected);
+  - [x] `Source: SourceDoc` yields three hits and no page; `SourcePage`
         the converse;
-  - [ ] after a second `EnsureIndex` on the existing index,
+  - [x] after a second `EnsureIndex` on the existing index,
         `GetRankingRulesWithContext` returns the new order (proves the
-        settings migrate on an already-populated index, the deploy path).
-- [ ] `internal/e2e/search_integration_test.go` (real Postgres +
+        settings migrate on an already-populated index, the deploy path);
+  - [x] a purpose-seeded pair sharing one `updated_at` orders by the
+        secondary `created` key (the shared corpus cannot show it — every
+        seeded stamp is distinct).
+- [x] `internal/e2e/search_integration_test.go` (real Postgres +
       Meilisearch through the ingest pipeline):
-  - [ ] the wire struct gains `created`/`updated_at`; after onboarding,
+  - [x] the wire struct gains `created`/`updated_at`; after onboarding,
         `updated_at` parses as RFC3339 with a `Z` suffix and is byte-equal
         to `Document.updated_at` for the same doc via `getDoc`;
-  - [ ] `created` on the hit equals the fixture's frontmatter date;
-  - [ ] add a created-parameterized fixture helper beside `doc()` (which
+  - [x] `created` on the hit equals the fixture's frontmatter date;
+  - [x] add a created-parameterized fixture helper beside `doc()` (which
         hardcodes `2026-07-01`) and give the two search fixture docs
         distinct dates, then assert `sort=created:desc` orders them — the
         `updated_at` order cannot be proven here because one reconcile
         stamps both docs identically (INV-0009 F4 addendum), and the test
         says so in a comment;
-  - [ ] `sort=bogus` through the real router → `400`.
-- [ ] `just test-integration` green locally (Docker required).
+  - [x] `source=doc` returns both documents and `source=page` none, through
+        the real router;
+  - [x] `sort=bogus` through the real router → `400`.
+- [x] `just test-integration` green locally (Docker required).
 
 #### Success Criteria
 
@@ -396,6 +402,38 @@ This phase proves each claim at the seam that can see it.
   (revert-drilled once, not kept as a test).
 - CI's `Test Go` job (unit + contract) stays green; the integration tag
   runs locally as today.
+
+**Status: COMPLETE ✅** (2026-09-13) — one commit; all criteria met.
+`just test-integration` is green across all sixteen packages, and
+`just lint` reports 0 issues.
+
+Two findings changed documents rather than code:
+
+- **Meilisearch places an empty sort value last in both directions.**
+  DESIGN-0005 predicted a plain lexicographic order, in which the `""`
+  that page records carry for `created` would lead ascending.
+  `TestIntegrationCreatedSortEdges` found otherwise: an empty value is
+  treated as absent and sorts last either way. The observed behavior is
+  the better one — undated records never crowd the top of a "newest
+  first" listing — so the `sort` parameter description in the spec and a
+  dated correction block in DESIGN-0005 were updated, and no code moved.
+- **The shared-transaction stamp needed its own fixture.** One
+  `ReconcileRepo` is one transaction, so `now()` is identical for every
+  record it touches (INV-0009 F4 addendum) — but the shared integration
+  corpus seeds six distinct stamps, so it can never exercise the
+  secondary key. `TestIntegrationSecondarySortKey` seeds a pair with one
+  shared `updated_at` and asserts `created` breaks the tie. The e2e test
+  hits the same wall from the other side and says so in a comment: both
+  of its documents land in one reconcile, so only `created` can separate
+  them there.
+
+The ranking-rule placement was revert-drilled once rather than kept as a
+test: moving `sort` back to its default position failed
+`TestRankingRulesSortLeads` ("ranking rules = [words typo proximity
+attribute sort exactness], want \"sort\" first") and
+`TestIntegrationSortBeatsRelevance` (the most relevant hit led instead of
+trailing). Both name the placement in their failure text. The rules were
+restored and both are green.
 
 ---
 

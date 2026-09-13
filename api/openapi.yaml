@@ -291,9 +291,9 @@ paths:
           in: query
           description: >
             Order the matches. The requested key is a total order over the result set, with a fixed secondary key and then
-            relevance breaking ties; absent, results are ranked by relevance alone. `created` sorts as its `YYYY-MM-DD` string,
-            so page hits — which carry no authored date — sort first ascending and last descending. An unrecognized value
-            is a 400.
+            relevance breaking ties; absent, results are ranked by relevance alone. Records with no value for the sort key
+            are placed last in both directions, so sorting by `created` puts page hits — which carry no authored date — after
+            every document. An unrecognized value is a 400.
           schema:
             type: string
             enum: ['updated_at:desc', 'updated_at:asc', 'created:desc', 'created:asc']
