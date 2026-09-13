@@ -27,6 +27,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(search,httpapi)* Cover the dated hit fields and the UTC pin
 - *(search,e2e)* Prove the dated hits against real backends
+- *(search)* Assert the unsorted request shape directly
 
 ## [0.9.0] - 2026-09-02
 
