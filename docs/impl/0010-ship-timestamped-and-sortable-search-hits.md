@@ -313,23 +313,23 @@ ask for documents or pages only, with accurate totals and offsets.
 
 #### Tasks
 
-- [ ] `internal/search/types.go`: `SearchParams` gains `Source string`
+- [x] `internal/search/types.go`: `SearchParams` gains `Source string`
       (doc comment: `"doc"`/`"page"`, `""` for both).
-- [ ] `internal/search/search.go`: `buildFilter` appends
+- [x] `internal/search/search.go`: `buildFilter` appends
       `appendEq(parts, "source", p.Source)` after `author`, keeping the
       documented clause order.
-- [ ] `internal/httpapi/search.go`: `Source: q.Get("source")`, passed
+- [x] `internal/httpapi/search.go`: `Source: q.Get("source")`, passed
       through unvalidated like the four existing facet filters (OQ-2a); a
       comment says why `source` is not a `400` while `sort` is.
-- [ ] `api/openapi.yaml`: `source` query parameter on `searchDocs`,
+- [x] `api/openapi.yaml`: `source` query parameter on `searchDocs`,
       `enum: [doc, page]`, description "Filter by record kind."
-- [ ] Unit tests: `TestBuildFilter` gains a `source` case and an
+- [x] Unit tests: `TestBuildFilter` gains a `source` case and an
       all-facets-in-order case including it; httpapi asserts `source=page`
       reaches the searcher and that `source=bogus` is passed through (a
       `200` with whatever the searcher returns — no `400`).
-- [ ] Contract test: `searchDocsSource` case
+- [x] Contract test: `searchDocsSource` case
       (`/api/v1/search?q=intro&source=doc`).
-- [ ] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
+- [x] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
       commit (`feat(search): source filter on searchDocs`).
 
 #### Success Criteria
@@ -338,6 +338,13 @@ ask for documents or pages only, with accurate totals and offsets.
   documented position; the contract test validates the `source` enum.
 - The unfiltered request is unchanged (no `source` clause when the
   parameter is absent).
+
+**Status: COMPLETE ✅** (2026-09-13) — one commit; all criteria met
+(`go test ./...` green, `just lint` 0 issues, `just lint-openapi`
+100/100). `buildFilter` appends the clause last, after `author`, so the
+documented clause order holds and the all-facets test pins the full
+string. An absent parameter adds no clause at all, leaving the
+unfiltered request unchanged.
 
 ---
 
