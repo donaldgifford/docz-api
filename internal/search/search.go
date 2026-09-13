@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -38,10 +39,17 @@ func (c *Client) Search(ctx context.Context, p *SearchParams) (SearchResult, err
 	}
 
 	req := &meilisearch.SearchRequest{
-		Offset:                p.Offset,
-		Limit:                 limit,
-		Facets:                facetNames,
-		AttributesToRetrieve:  []string{"source", "repo", "doc_id", "type", "title", "path", "status", "author", "body"},
+		Offset: p.Offset,
+		Limit:  limit,
+		Facets: facetNames,
+		// The retrieve list is the first place a hit field can be dropped:
+		// Meilisearch returns only these attributes, so one missing here
+		// decodes as a zero value however rawHit and decodeHits are written
+		// (INV-0009 F2). Add a new hit field in all three places.
+		AttributesToRetrieve: []string{
+			"source", "repo", "doc_id", "type", "title", "path",
+			"status", "author", "created", "updated_at", "body",
+		},
 		AttributesToCrop:      []string{"body"},
 		CropLength:            snippetCropLength,
 		AttributesToHighlight: []string{"body"},
@@ -86,6 +94,8 @@ type rawHit struct {
 	Path      string       `json:"path"`
 	Status    string       `json:"status"`
 	Author    string       `json:"author"`
+	Created   string       `json:"created"`
+	UpdatedAt int64        `json:"updated_at"` // Unix seconds, the index schema.
 	Formatted rawFormatted `json:"_formatted"`
 }
 
@@ -106,18 +116,33 @@ func decodeHits(h meilisearch.Hits) ([]SearchHit, error) {
 	for i := range raws {
 		r := &raws[i]
 		hits[i] = SearchHit{
-			Source:  r.Source,
-			Repo:    r.Repo,
-			DocID:   r.DocID,
-			Type:    r.Type,
-			Title:   r.Title,
-			Path:    r.Path,
-			Status:  r.Status,
-			Author:  r.Author,
-			Snippet: r.Formatted.Body,
+			Source:    r.Source,
+			Repo:      r.Repo,
+			DocID:     r.DocID,
+			Type:      r.Type,
+			Title:     r.Title,
+			Path:      r.Path,
+			Status:    r.Status,
+			Author:    r.Author,
+			Created:   r.Created,
+			UpdatedAt: formatUnix(r.UpdatedAt),
+			Snippet:   r.Formatted.Body,
 		}
 	}
 	return hits, nil
+}
+
+// formatUnix renders Unix seconds as RFC3339 in UTC, or "" for zero — the
+// wire's not-applicable convention. The zone is pinned rather than left to
+// the process's own, so a hit's stamp is byte-identical to the
+// Document.updated_at the read endpoints serve for the same row
+// (DESIGN-0005). The index stores whole seconds and RFC3339 renders whole
+// seconds, so nothing is lost in the conversion.
+func formatUnix(sec int64) string {
+	if sec == 0 {
+		return ""
+	}
+	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
 }
 
 // parseFacets decodes Meilisearch's facetDistribution, shaped as

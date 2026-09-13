@@ -50,18 +50,28 @@ type SearchParams struct {
 
 // SearchHit is one result row with a highlighted body snippet. Source is
 // "doc" or "page"; Path is the repo-relative file path on docs and the
-// published path on pages. The doc-only fields (DocID/Type/Status/Author) are
-// "" on page hits — the wire's not-applicable convention.
+// published path on pages. The doc-only fields (DocID/Type/Status/Author/
+// Created) are "" on page hits — the wire's not-applicable convention.
+//
+// The two dates are distinct and both mirror their Document counterparts:
+// Created is the author-typed frontmatter date ("YYYY-MM-DD"), while
+// UpdatedAt is when docz-api last ingested a content change for the record
+// (RFC3339, UTC) — not the git commit time, and not empty on page hits,
+// which carry a real repo_pages stamp. A first ingest stamps every record
+// in the repo at onboard time, because one reconcile is one transaction
+// (DESIGN-0005).
 type SearchHit struct {
-	Source  string `json:"source"`
-	Repo    string `json:"repo"`
-	DocID   string `json:"doc_id"`
-	Type    string `json:"type"`
-	Title   string `json:"title"`
-	Path    string `json:"path"`
-	Status  string `json:"status"`
-	Author  string `json:"author"`
-	Snippet string `json:"snippet"`
+	Source    string `json:"source"`
+	Repo      string `json:"repo"`
+	DocID     string `json:"doc_id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Path      string `json:"path"`
+	Status    string `json:"status"`
+	Author    string `json:"author"`
+	Created   string `json:"created"`
+	UpdatedAt string `json:"updated_at"`
+	Snippet   string `json:"snippet"`
 }
 
 // FacetMap maps one facet's values to their result counts.

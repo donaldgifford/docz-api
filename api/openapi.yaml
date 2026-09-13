@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: docz-api
-  version: 1.4.2
+  version: 1.5.0
   description: |
     HTTP contract for docz-api's `/api/v1` read and search surface, plus the
     site auth endpoints and the GitHub webhook receiver. Hand-authored and kept
@@ -766,7 +766,10 @@ components:
           type: string
         updated_at:
           type: string
-          description: 'RFC3339, or "" when unset.'
+          description: >
+            When docz-api last ingested a content change for this record (RFC3339, UTC). The first ingest stamps every record
+            in the repository at onboard time; thereafter the value moves only when the content changes. Not the git commit
+            time. "" when unset.
         raw_md:
           type: string
           description: Full Markdown source; present only on the single-document endpoint.
@@ -774,11 +777,11 @@ components:
       description: |
         One search result with a highlighted body snippet. A hit is either a
         docz document (`source: doc`) or an api-block page (`source: page`);
-        the doc-only fields (`doc_id`, `type`, `status`, `author`) are `""` on
-        page hits.
+        the doc-only fields (`doc_id`, `type`, `status`, `author`, `created`)
+        are `""` on page hits. `updated_at` is populated on both kinds.
       type: object
       additionalProperties: false
-      required: [source, repo, doc_id, type, title, path, status, author, snippet]
+      required: [source, repo, doc_id, type, title, path, status, author, created, updated_at, snippet]
       properties:
         source:
           type: string
@@ -805,6 +808,16 @@ components:
         author:
           type: string
           description: '"" when unset.'
+        created:
+          type: string
+          description: >
+            The document's frontmatter date (YYYY-MM-DD). "" on page hits, which carry no authored date, and when unset.
+        updated_at:
+          type: string
+          description: >
+            When docz-api last ingested a content change for this record (RFC3339, UTC). The first ingest stamps every record
+            in the repository at onboard time; thereafter the value moves only when the content changes. Not the git commit
+            time. "" when unset.
         snippet:
           type: string
           description: Highlighted body excerpt with <em></em> around matches.
