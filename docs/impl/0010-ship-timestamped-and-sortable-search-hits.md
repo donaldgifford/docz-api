@@ -155,32 +155,35 @@ judged on its own changes.
       implementation branch inherits the bump from `main`; re-run the
       local scan before Phase 1's first push to confirm nothing new
       appeared.
-- [ ] `internal/search/search.go`: add `"created"` and `"updated_at"` to
+- [x] `internal/search/search.go`: add `"created"` and `"updated_at"` to
       `AttributesToRetrieve`; add `Created string` and `UpdatedAt int64` to
       `rawHit`; copy both in `decodeHits`, the stamp through a new
       `formatUnix(sec int64) string` (`0 → ""`, else
       `time.Unix(sec, 0).UTC().Format(time.RFC3339)`), with a doc comment
       naming the retrieve list as the first drop site (INV-0009 F2).
-- [ ] `internal/search/types.go`: `SearchHit` gains `Created string`
+      **Amended:** the retrieve list is hoisted to a package-level
+      `retrieveAttributes` var (mirroring the existing `facetNames`) so a
+      unit test can assert it directly — see the Phase 1 status note.
+- [x] `internal/search/types.go`: `SearchHit` gains `Created string`
       (`json:"created"`) and `UpdatedAt string` (`json:"updated_at"`)
       placed before `Snippet`; the type comment states the ingest-observed
       semantics and the `""` conventions (page hits: `created` empty,
       `updated_at` real).
-- [ ] `internal/httpapi/dto.go`: `nullTimestamp` renders
+- [x] `internal/httpapi/dto.go`: `nullTimestamp` renders
       `t.Time.UTC().Format(time.RFC3339)`; comment cites DESIGN-0005 (pgx
       scans in the process zone).
-- [ ] `api/openapi.yaml`: `SearchHit.properties.created` + `.updated_at`
+- [x] `api/openapi.yaml`: `SearchHit.properties.created` + `.updated_at`
       and both in `required`; replace `Document.updated_at`'s description
       with the DESIGN-0005 wording and use the same text on the hit;
       `info.version: 1.5.0`.
-- [ ] Unit tests: `formatUnix` table (zero, a value with `Z` suffix);
+- [x] Unit tests: `formatUnix` table (zero, a value with `Z` suffix);
       `decodeHits` round-trips both fields from a canned Meilisearch hit;
       `nullTimestamp` renders `Z` for a non-UTC `time.Time`; the httpapi
       `TestSearchEndpoint` wire struct asserts `created`/`updated_at`.
-- [ ] Contract test: `contractSearcher` returns `Created: "2026-01-15"`
-      and `UpdatedAt: "2026-09-10T17:52:00Z"` so the schema's string type
+- [x] Contract test: `contractSearcher` returns `Created: "2026-01-15"`
+      and `UpdatedAt: "2025-06-22T18:04:11Z"` so the schema's string type
       is exercised by real values.
-- [ ] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
+- [x] `just fmt`, `just lint`, `just lint-openapi`, `just test` green;
       commit (`feat(search): expose created and updated_at on search hits`).
 
 #### Success Criteria
@@ -193,8 +196,35 @@ judged on its own changes.
   required properties.
 - `just lint-openapi` stays 100/100.
 - A hand-decoded Meilisearch hit with `updated_at: 1750615451` renders
-  `"2026-06-22T18:04:11Z"` on the wire, matching what `nullTimestamp`
+  `"2025-06-22T18:04:11Z"` on the wire, matching what `nullTimestamp`
   renders for the same instant.
+
+**Status: COMPLETE ✅** (2026-09-13) — three commits: the read path +
+spec, the UTC pin, and the tests. All criteria met: `go build`, `go vet`,
+`just lint` (0 issues), `just lint-openapi` (100/100), and
+`go test ./internal/search/ ./internal/httpapi/` green; the local Trivy
+scan reports zero HIGH/CRITICAL (the grpc bump came in from `main`).
+
+Two corrections found while building:
+
+- **The golden value in this criterion was wrong.** DESIGN-0001's index
+  example renders `1750615451` as `2026-06-22T18:04:11Z`, and this plan
+  copied it. The epoch is actually **2025**-06-22T18:04:11Z, confirmed by
+  running the conversion. The tests pin the computed value; the criterion
+  above is corrected. Nothing in the code depended on the wrong figure —
+  it only ever appeared in prose.
+- **The retrieve list moved to a package var.** The task described editing
+  the literal in place, but the list is precisely the drop site no
+  faked-searcher test can observe (INV-0009 F2), so leaving it
+  unassertable would have repeated the bug's own blind spot.
+  `retrieveAttributes` mirrors the existing `facetNames` var and
+  `TestSearchRetrievesDatedAttributes` pins its contents against
+  `SearchHit`.
+
+`decodeHits` is covered through canned Meilisearch JSON rather than
+hand-built structs, so the index schema's JSON tags are exercised too; the
+page-hit case pins the asymmetry DESIGN-0005 promises (real `updated_at`,
+empty `created`).
 
 ---
 
